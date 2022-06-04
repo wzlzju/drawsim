@@ -1,7 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 
-global p5, chains, orb, rank5counts
+global p5, chains, orb, targetcounts
 
 character_pool = {
 	"5": ["r5a", "r5b", "r5c", "b5a", "b5b", "b5c", "g5a", "g5b", "g5c", "w5a", "w5b", "w5c"],
@@ -39,7 +39,7 @@ def gachaStrategy(colors):
 	return res
 
 def processResults(colors, ranks, characters, results):
-	global p5, chains, orb, rank5counts
+	global p5, chains, orb, targetcounts
 	if len(results) == 0:
 		results.append(0)
 	for i in range(len(results)):
@@ -53,7 +53,7 @@ def processResults(colors, ranks, characters, results):
 			chains = 0
 			if color == target[0]:
 				if character in list(targetcounts.keys()):
-					rank5counts[character] += 1
+					targetcounts[character] += 1
 		else:
 			if chains >= 5:
 				p5 += 0.005
@@ -62,7 +62,7 @@ def processResults(colors, ranks, characters, results):
 					p5 = 1
 				
 if __name__ == "__main__":
-	global p5, chains, orb, rank5counts
+	global p5, chains, orb, targetcounts
 	full_bl_1 = []
 	full_bl_2 = []
 	full_bl_3 = []
@@ -75,20 +75,20 @@ if __name__ == "__main__":
 		p5 = 0.08
 		chains = 0
 		orb = 0
-		rank5counts = {"a": 0, "b": 0, "c": 0}
+		targetcounts = {"a": 0, "b": 0, "c": 0}
 		
 		while(True):
 			colors, ranks, characters = generateARound()
 			results = gachaStrategy(colors)
 			processResults(colors, ranks, characters, results)
-			full_bl_num = sum([i >= 11 for i in list(rank5counts.values())])
+			full_bl_num = sum([i >= 11 for i in list(targetcounts.values())])
 			if full_bl_num >= 1 and len(full_bl_1) == sim_num:
 				full_bl_1.append(orb)
 			if full_bl_num >= 2 and len(full_bl_2) == sim_num:
 				full_bl_2.append(orb)
 			if full_bl_num >= 3 and len(full_bl_3) == sim_num:
 				full_bl_3.append(orb)
-				l = list(rank5counts.values())
+				l = list(targetcounts.values())
 				l.sort()
 				num_3fbl_1.append(max(l))
 				num_3fbl_2.append(l[1])
