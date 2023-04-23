@@ -10,7 +10,7 @@ character_pool = {
 	"4": ["r4x"]*38 + ["b4x"]*43 + ["g4x"]*32 + ["w4x"]*40
 }
 
-target = ["r", "g", "w", "b"]
+target = ["r", "w", "g", "b"]
 needed_orbs = [5, 4, 4, 4, 3]
 
 def generateARound():
@@ -77,7 +77,7 @@ def processResults(colors, ranks, characters, results):
 				p5 = p5u
 				p4u = (1-p5u-p5)*0.03/(1-0.03-0.03)
 				chains -= 5
-				if p5u >= 0.08:
+				if p5u >= 0.09:
 					p5u = 0.5
 					p5 = 0.5
 					p4u = 0

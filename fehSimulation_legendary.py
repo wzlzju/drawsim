@@ -8,7 +8,7 @@ character_pool = {
 	"4": ["r4x"]*38 + ["b4x"]*43 + ["g4x"]*32 + ["w4x"]*40
 }
 
-target = ["g", "b", "r", "w"]
+target = ["b", "g", "r", "w"]
 needed_orbs = [5, 4, 4, 4, 3]
 
 def generateARound():
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 	print(miu-sigma, miu+sigma)
 	print(miu-sigma*2, miu+sigma*2)
 	print(miu-sigma*3, miu+sigma*3)
-	plt.hist(full_bl_1, bins=20)
+	plt.hist(full_bl_1, bins=50)
 	plt.title("full break limit 1 rank5")
 	plt.xlabel("orbs")
 	plt.ylabel("num")
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 	print(miu-sigma, miu+sigma)
 	print(miu-sigma*2, miu+sigma*2)
 	print(miu-sigma*3, miu+sigma*3)
-	plt.hist(full_bl_2, bins=20)
+	plt.hist(full_bl_2, bins=50)
 	plt.title("full break limit 2 rank5")
 	plt.xlabel("orbs")
 	plt.ylabel("num")
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 	print(miu-sigma, miu+sigma)
 	print(miu-sigma*2, miu+sigma*2)
 	print(miu-sigma*3, miu+sigma*3)
-	plt.hist(full_bl_3, bins=20)
+	plt.hist(full_bl_3, bins=50)
 	plt.title("full break limit 3 rank5")
 	plt.xlabel("orbs")
 	plt.ylabel("num")
