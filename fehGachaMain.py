@@ -2,12 +2,18 @@ from tkinter import *
 from tkinter import messagebox
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import random, math, re
+import random, math, re, os
 
 import fehGacha as gacha
+try:
+    from PIL import Image, ImageTk
+    NOPIL = False
+except:
+    NOPIL = True
 
 COLORS = ["red", "blue", "green", "gray"]
 MODES = ["normal", "special", "herofest", "double", "legendary", "weekly"]
+IMGPATH = "./img"
 
 class Application(Frame):
     def __init__(self, master=None):
@@ -91,95 +97,91 @@ class Application(Frame):
                                 strategy=self.simu_selectStrategy,
                                 terminate=self.simu_stopStrategy
                             )
-
+        
+        self.ballImgHolder = [None]*5
+        self.charaImgHolder = [None]*5
+    
     def createWidget(self):
-        self.inputPanel = Canvas(self)
-        self.inputPanel.grid(row=0, column=0)
+        self.inputPanel = Canvas(self, highlightthickness=0)
+        self.inputPanel.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
+        self.upInput = Canvas(self.inputPanel, highlightthickness=0)
+        self.upInput.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         rowId = 0
         for pup in ['5u', '4u']:
             for color in COLORS:
-                self.upInput = Canvas(self.inputPanel)
-                self.upInput.grid(row=rowId,column=0)
-                label=Label(self.upInput, text="%s %s: " % ({'5u':"5* Up", '4u':"4* Up"}[pup], color))
-                label.grid(row=0, column=0)
-                entry=Entry(self.upInput, textvariable=self.up[pup][color])
-                entry.grid(row=0, column=1)
+                upInput = Canvas(self.upInput, highlightthickness=0)
+                upInput.grid(row=rowId,column=0, padx=5, pady=5, sticky="w")
+                label=Label(upInput, text="%s %s: " % ({'5u':"5* Up", '4u':"4* Up"}[pup], color))
+                label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+                entry=Entry(upInput, textvariable=self.up[pup][color])
+                entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
                 rowId += 1
         
-        self.modeInput = Canvas(self.inputPanel)
-        self.modeInput.grid(row=rowId,column=0)
+        self.modeInput = Canvas(self.inputPanel, highlightthickness=0)
+        self.modeInput.grid(row=1, column=0, padx=5, pady=5, sticky="w")
         label=Label(self.modeInput, text="Gacha type:")
         label.grid(row=0, column=0)
         for i, mode in enumerate(MODES):
             radio=Radiobutton(self.modeInput, text=mode, value=i, variable=self.mode)
-            radio.grid(row=i+1, column=0)
-        Button(self.inputPanel, text='confirm',width=8,command=self.inputConfirm).grid(row=rowId+1,column=0)
+            radio.grid(row=i+1, column=0, padx=5, pady=5, sticky="w")
+        Button(self.inputPanel, text='confirm',width=8,command=self.inputConfirm).grid(row=2, column=0, padx=5, pady=5)
 
-        self.drawPanel = Canvas(self)
-        self.drawPanel.grid(row=0, column=1)
+        self.drawPanel = Canvas(self, highlightthickness=0)
+        self.drawPanel.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        self.canvas = Canvas(self.drawPanel, width=self.width, height=self.height, bg="white")
-        self.canvas.grid(row=0,column=0,rowspan=4,columnspan=2)
+        self.canvas = Canvas(self.drawPanel, width=self.width, height=self.height, bg="white", highlightthickness=0)
+        self.canvas.grid(row=0, column=0, rowspan=4, columnspan=2, padx=5, pady=5, sticky="nsew")
         
-        self.updateCanvas()
-        # self.canvas.tag_bind("balls", "<Button-1>", self.selectBall)
+        # self.updateCanvas()
         self.canvas.bind("<Button-1>", self.selectBall)
 
         scrollbarInfo_v = Scrollbar(self.drawPanel)
-        # scrollbarInfo_v.pack(side=RIGHT, fill=Y)
         scrollbarInfo_h = Scrollbar(self.drawPanel, orient=HORIZONTAL)
-        # scrollbarInfo_h.pack(side=BOTTOM, fill=X)
         self.infobox = Text(self.drawPanel,width=42,height=6,yscrollcommand=scrollbarInfo_v.set, xscrollcommand=scrollbarInfo_h.set, wrap=NONE)
-        self.infobox.grid(row=4,column=0,rowspan=1,columnspan=2)
+        self.infobox.grid(row=4,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
 
-        self.list = Canvas(self.drawPanel, width=self.width, height=self.height, bg="white")
+        self.list = Canvas(self.drawPanel, width=self.width, height=self.height, bg="white", highlightthickness=0)
         self.list.grid(row=5,column=0,rowspan=3,columnspan=2)
 
         scrollbarList5_v = Scrollbar(self.list)
-        # scrollbarList5_v.pack(side=RIGHT, fill=Y)
         scrollbarList5_h = Scrollbar(self.list, orient=HORIZONTAL)
-        # scrollbarList5_h.pack(side=BOTTOM, fill=X)
-        self.list5 = Listbox(self.list,width=21,height=10,yscrollcommand=scrollbarList5_v.set, xscrollcommand=scrollbarList5_h.set)
-        self.list5.grid(row=0, column=0)
+        self.list5 = Listbox(self.list,width=21,height=10,yscrollcommand=scrollbarList5_v.set, xscrollcommand=scrollbarList5_h.set, highlightthickness=0)
+        self.list5.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
         scrollbarList34_v = Scrollbar(self.list)
-        # scrollbarList34_v.pack(side=RIGHT, fill=Y)
         scrollbarList34_h = Scrollbar(self.list, orient=HORIZONTAL)
-        # scrollbarList34_h.pack(side=BOTTOM, fill=X)
-        self.list34 = Listbox(self.list,width=21,height=10,yscrollcommand=scrollbarList34_v.set, xscrollcommand=scrollbarList34_h.set)
-        self.list34.grid(row=0, column=1)
+        self.list34 = Listbox(self.list,width=21,height=10,yscrollcommand=scrollbarList34_v.set, xscrollcommand=scrollbarList34_h.set, highlightthickness=0)
+        self.list34.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
-        self.simuPanel = Canvas(self)
-        self.simuPanel.grid(row=0, column=2)
+        self.simuPanel = Canvas(self, highlightthickness=0)
+        self.simuPanel.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
         
         self.figure = Figure(figsize = (4,3), dpi = 100)
         self.plot = self.figure.add_subplot(111)
         self.canvas_tk_agg = FigureCanvasTkAgg(self.figure, master=self.simuPanel)
-        self.canvas_tk_agg.get_tk_widget().grid(row=0,column=0,rowspan=4,columnspan=2)
+        self.canvas_tk_agg.get_tk_widget().grid(row=0,column=0,rowspan=4,columnspan=2, padx=5, pady=5, sticky="nsew")
 
-        self.strategyInput = Canvas(self.simuPanel, width=self.width, height=self.height)
-        self.strategyInput.grid(row=4,column=0,rowspan=1,columnspan=2)
+        self.strategyInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
+        self.strategyInput.grid(row=4,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.strategyInput, text="Drawing strategy: ")
-        label.grid(row=0, column=0)
-        Entry(self.strategyInput, textvariable=self.strategyStr).grid(row=0, column=1)
+        label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        Entry(self.strategyInput, textvariable=self.strategyStr).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        self.stopInput = Canvas(self.simuPanel, width=self.width, height=self.height)
-        self.stopInput.grid(row=5,column=0,rowspan=1,columnspan=2)
+        self.stopInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
+        self.stopInput.grid(row=5,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.stopInput, text="Stop when: ")
-        label.grid(row=0, column=0)
-        Entry(self.stopInput, textvariable=self.stopStr).grid(row=0, column=1)
-        # self.stopInput = Entry(self, textvariable=self.stopStr).grid(row=5,column=2,rowspan=1,columnspan=2)
+        label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        Entry(self.stopInput, textvariable=self.stopStr).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        self.simuNumInput = Canvas(self.simuPanel, width=self.width, height=self.height)
-        self.simuNumInput.grid(row=6,column=0,rowspan=1,columnspan=2)
+        self.simuNumInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
+        self.simuNumInput.grid(row=6,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.simuNumInput, text="Simulation number: ")
-        label.grid(row=0, column=0)
-        Entry(self.simuNumInput, textvariable=self.simu_num).grid(row=0, column=1)
-        # self.simuNumInput = Entry(self, textvariable=self.simu_num).grid(row=6,column=2,rowspan=1,columnspan=2)
+        label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        Entry(self.simuNumInput, textvariable=self.simu_num).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        Button(self.simuPanel, text='simulate',width=8,command=self.simu).grid(row=7,column=0,rowspan=1,columnspan=1)
-        
+        Button(self.simuPanel, text='simulate',width=8,command=self.simu).grid(row=7,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+
     def inputConfirm(self):
         self.initialize()
         self.updateCanvas()
@@ -259,13 +261,19 @@ class Application(Frame):
         return probs, charas
 
     def updateCanvas(self):
-        self.canvas.create_rectangle(0,0,self.width,self.height, fill="white", outline="white", tags=("canvas_bg"))
+        # self.canvas.create_rectangle(0,0,self.width,self.height, fill="white", outline="white", tags=("canvas_bg"))
+        self.canvas.delete("all")
         for i in range(len(self.balls)):
-            self.canvas.create_oval(*self.balls[i], fill=self.colorList[i], tags=("balls"))
+            imgpath = os.path.join(IMGPATH, "util", "%s.png"%self.colorList[i])
+            if os.path.exists(imgpath):
+                self.ballImgHolder[i] = PhotoImage(file=imgpath)
+                x0 = self.ballParas['cx']-self.ballParas['cr']*math.sin(math.pi*2*i/5)
+                y0 = self.ballParas['cy']-self.ballParas['cr']*math.cos(math.pi*2*i/5)
+                self.canvas.create_image(x0, y0,image=self.ballImgHolder[i])
+            else:
+                self.canvas.create_oval(*self.balls[i], fill=self.colorList[i], tags=("balls-%d"%i))
     
     def selectBall(self, event):
-        # messagebox.showinfo('message', 'select ball1')
-        # print(event.widget)
         def inBox(x1,y1,x2,y2, x,y):
             return x>x1 and x<x2 and y>y1 and y<y2
         s=-1
@@ -288,13 +296,20 @@ class Application(Frame):
                 pass
             else:
                 self.orbs += [5,4,4,4,3][Nonenum]
-                self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'])
-                # print(self.round[s]['name'], '\t', self.round[s]['rank'])
+                imgpath = os.path.join(IMGPATH, "chara", "%s.png"%self.round[s]['name'])
+                if os.path.exists(imgpath):
+                    if self.round[s]['rank'] in ['5u', '4u'] and not NOPIL:
+                        img = Image.open(imgpath)
+                        img = img.resize((60, 60))
+                        self.charaImgHolder[s] = ImageTk.PhotoImage(img)
+                    else:
+                        self.charaImgHolder[s] = PhotoImage(file=imgpath)
+                    self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaImgHolder[s])
+                else:
+                    self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'])
                 self.statistics[self.round[s]['rank']].append(self.round[s]['name'])
                 self.colorList[s] = self.round[s]['name']
                 self.round[s] = None
-                # print(self.colorList)
-                # print(self.orbs)
         
         self.updateStatistics()
     
