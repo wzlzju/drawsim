@@ -15,15 +15,15 @@ class gacha(object):
         self.charas['5'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] == 6]
+        } for c in data['heroes'] if c['rating'] in [6, 16]]
         self.charas['4to5'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] == 3]
+        } for c in data['heroes'] if c['rating'] in [3, 30]]
         self.charas['34'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] == 2]
+        } for c in data['heroes'] if c['rating'] in [2, 20]]
         self.mode = mode
 
         self.cprobs = self.probs
