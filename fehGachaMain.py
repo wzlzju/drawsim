@@ -337,9 +337,9 @@ class Application(Frame):
         stopStr = self.stopStr.get()
         exp = stopStr.split(' ')
         for i in range(len(exp)):
-            if exp[i] not in ['and', 'or'] and not exp[i].isdigit():
+            if exp[i] not in ['and', 'or', 'not'] and not exp[i].isdigit():
                 exp[i] = "collection.get('%s',0) >=" % (exp[i])
-        return eval(" ".join(exp))
+        return safeeval(" ".join(exp), {'collection': collection})
     
     def simu(self):
         orbres = self.simulationObj.simu(int(self.simu_num.get()))
@@ -347,7 +347,20 @@ class Application(Frame):
         self.plot.hist(orbres, bins=20)
         self.canvas_tk_agg.draw()
 
-
+def safeeval(string, dict) :
+    code = compile(string,'<user input>','eval')
+    reason = None
+    banned = ('eval','compile','exec','getattr','hasattr','setattr','delattr',
+            'classmethod','globals','help','input','isinstance','issubclass','locals',
+            'open','print','property','staticmethod','vars')
+    for name in code.co_names:
+        if re.search(r'^__\S*__$',name):
+            reason = 'dunder attributes not allowed'
+        elif name in banned:
+            reason = 'arbitrary code execution not allowed'
+        if reason:
+            raise NameError(f'{name} not allowed : {reason}')
+    return eval(code, dict)
 
 
 if __name__ == "__main__":
