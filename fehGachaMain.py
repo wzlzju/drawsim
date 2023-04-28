@@ -53,14 +53,6 @@ class Application(Frame):
             y0 = self.ballParas['cy']-self.ballParas['cr']*math.cos(math.pi*2*i/5)
             r = self.ballParas['r']/2
             self.balls.append((x0-r, y0-r, x0+r, y0+r))
-        
-        # self.balls = [
-        #     (125,25,175,75),
-        #     (55,75,105,125),
-        #     (90,165,140,215),
-        #     (170,165,220,215),
-        #     (195,75,245,125)
-        # ]
 
         self.strategyStr = StringVar(self, "Rwgb")
         self.stopStr = StringVar(self, "依娜拉 11 or 古尔维格 11")
@@ -189,8 +181,6 @@ class Application(Frame):
         self.plot.clear()
     
     def updateStatistics(self):
-        # self.after(100, self.updateInfo)
-        # self.after(100, self.updateList)
         self.updateInfo()
         self.updateList()
 
@@ -201,7 +191,6 @@ class Application(Frame):
             ts += "\n%s:\t%d" % ({'5u':'5*up', '5':'5*', '4to5':'4->5', '4u':'4*up', '34':'34*'}[rank], len(self.statistics[rank]))
 
         self.infobox.insert('1.0', ts)
-        # self.after(100, self.updateInfo)
     
     def updateList(self):
         self.list5.delete(0, END)
@@ -219,8 +208,6 @@ class Application(Frame):
             self.list34.insert(END, i)
         for i in self.statistics['34']:
             self.list34.insert(END, i)
-        
-        # self.after(100, self.updateList)
 
     def parseUserInput(self, up=None, mode=None):
         if not up:
@@ -261,17 +248,16 @@ class Application(Frame):
         return probs, charas
 
     def updateCanvas(self):
-        # self.canvas.create_rectangle(0,0,self.width,self.height, fill="white", outline="white", tags=("canvas_bg"))
         self.canvas.delete("all")
         for i in range(len(self.balls)):
             imgpath = os.path.join(IMGPATH, "util", "%s.png"%self.colorList[i])
             if os.path.exists(imgpath):
                 self.ballImgHolder[i] = PhotoImage(file=imgpath)
-                x0 = self.ballParas['cx']-self.ballParas['cr']*math.sin(math.pi*2*i/5)
-                y0 = self.ballParas['cy']-self.ballParas['cr']*math.cos(math.pi*2*i/5)
-                self.canvas.create_image(x0, y0,image=self.ballImgHolder[i])
+                x0 = (self.balls[i][0]+self.balls[i][2])/2
+                y0 = (self.balls[i][1]+self.balls[i][3])/2
+                self.canvas.create_image(x0, y0,image=self.ballImgHolder[i], tags=("balls"))
             else:
-                self.canvas.create_oval(*self.balls[i], fill=self.colorList[i], tags=("balls-%d"%i))
+                self.canvas.create_oval(*self.balls[i], fill=self.colorList[i], tags=("balls"))
     
     def selectBall(self, event):
         def inBox(x1,y1,x2,y2, x,y):
@@ -304,9 +290,9 @@ class Application(Frame):
                         self.charaImgHolder[s] = ImageTk.PhotoImage(img)
                     else:
                         self.charaImgHolder[s] = PhotoImage(file=imgpath)
-                    self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaImgHolder[s])
+                    self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaImgHolder[s], tags=("charas"))
                 else:
-                    self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'])
+                    self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'], tags=("charas"))
                 self.statistics[self.round[s]['rank']].append(self.round[s]['name'])
                 self.colorList[s] = self.round[s]['name']
                 self.round[s] = None
