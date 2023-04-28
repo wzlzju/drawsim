@@ -45,7 +45,10 @@ class gacha(object):
             self.count += 1
             if self.count % 5 == 0:
                 p5 = self.cprobs['5u']+self.cprobs['5']+0.005
-                self._updataProbability(p5)
+                self._updateProbability(p5)
+            if self.count >= 120:
+                p5 = 1.0
+                self._updateProbability(p5)
             if crank == "5u":
                 self.cprobs = self.probs
                 self.count = 0
@@ -53,14 +56,16 @@ class gacha(object):
                     self.lantern = 0
             elif crank == "5":
                 p5 = self.cprobs['5u']+self.cprobs['5']-0.02
-                self._updataProbability(p5)
+                if p5 < self.probs['5u']+self.probs['5']:
+                    p5 = self.probs['5u']+self.probs['5']
+                self._updateProbability(p5)
                 self.count = 0
                 self.lantern += 1
             if self.lantern >= 3: # to disable lantern mechanism, set self.lantern == math.inf
                 self.cprobs['5u'] = self.cprobs['5u']+self.cprobs['5']
                 self.cprobs['5'] = 0.0
     
-    def _updataProbability(self, p5):
+    def _updateProbability(self, p5):
         pnon5 = 1-p5
         self.cprobs['5u'] = p5*self.probs['5u']/(self.probs['5u']+self.probs['5'])
         self.cprobs['5'] = p5*self.probs['5']/(self.probs['5u']+self.probs['5'])

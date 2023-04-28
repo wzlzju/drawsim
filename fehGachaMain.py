@@ -221,7 +221,7 @@ class Application(Frame):
                 charaStr = up[pup][color]
                 if type(charaStr) is not str:
                     charaStr = charaStr.get()
-                for chara in charaStr.split():
+                for chara in charaStr.split(","):
                     if chara != "":
                         charas[pup].append({'name': chara, 'color': color})
 
@@ -321,11 +321,23 @@ class Application(Frame):
 
     def simu_stopStrategy(self, collection):
         stopStr = self.stopStr.get()
-        exp = stopStr.split(' ')
-        for i in range(len(exp)):
-            if exp[i] not in ['and', 'or', 'not'] and not exp[i].isdigit():
-                exp[i] = "collection.get('%s',0) >=" % (exp[i])
-        return safeeval(" ".join(exp), {'collection': collection})
+        parse_or = stopStr.split(" or ")
+        for i, exp_or in enumerate(parse_or):
+            parse_and = exp_or.split(" and ")
+            for j, exp_and in enumerate(parse_and):
+                exps = exp_and.split(" ")
+                exp = ("collection.get('%s',0) >=" % (" ".join(exps[:-1])))+" "+exps[-1]
+                parse_and[j] = exp
+            exp = " and ".join(parse_and)
+            parse_or[i] = exp
+        exp = " or ".join(parse_or)
+        return safeeval(exp, {'collection': collection})
+        
+        # exp = stopStr.split()
+        # for i in range(len(exp)):
+        #     if exp[i] not in ['and', 'or', 'not'] and not exp[i].isdigit():
+        #         exp[i] = "collection.get('%s',0) >=" % (exp[i])
+        # return safeeval(" ".join(exp), {'collection': collection})
     
     def simu(self):
         orbres = self.simulationObj.simu(int(self.simu_num.get()))
