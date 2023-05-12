@@ -84,6 +84,7 @@ class drawing(object):
         elif mode in ["herofest"]:
             probs = {"5u": 0.05, "5": 0.03, "4to5": 0.03, "34": 0.89}
         elif mode in ["double"]:
+            print(up)
             if "4u" in list(up.keys()):
                 probs = {"5u": 0.06, "4to5": 0.03, "4u": 0.03, "34": 0.88}
             else:

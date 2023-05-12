@@ -1,7 +1,6 @@
 from tkinter import *
-from tkinter import messagebox
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import random, math, re, os
 
 import fehGacha as gacha
@@ -92,6 +91,8 @@ class Application(Frame):
         
         self.ballImgHolder = [None]*5
         self.charaImgHolder = [None]*5
+        self.charaBgHolder = [None]*5
+        self.charaBorderHolder = [None]*5
     
     def createWidget(self):
         self.inputPanel = Canvas(self, highlightthickness=0)
@@ -250,7 +251,8 @@ class Application(Frame):
     def updateCanvas(self):
         self.canvas.delete("all")
         for i in range(len(self.balls)):
-            imgpath = os.path.join(IMGPATH, "util", "%s.png"%self.colorList[i])
+            imgpath = os.path.join(IMGPATH, "util", "%s"%self.colorList[i])
+            imgpath = addImgExt(imgpath)
             if os.path.exists(imgpath):
                 self.ballImgHolder[i] = PhotoImage(file=imgpath)
                 x0 = (self.balls[i][0]+self.balls[i][2])/2
@@ -281,8 +283,20 @@ class Application(Frame):
             if self.round[s] is None:
                 pass
             else:
-                self.orbs += [5,4,4,4,3][Nonenum]
-                imgpath = os.path.join(IMGPATH, "chara", "%s.png"%self.round[s]['name'])
+                # draw background
+                imgpath = os.path.join(IMGPATH, "util", "charatemplate_bg_%dstar" % {'5u':5, '5':5, '4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
+                imgpath = addImgExt(imgpath)
+                if os.path.exists(imgpath):
+                    img = Image.open(imgpath)
+                    img = img.resize((70, 70))
+                    self.charaBgHolder[s] = ImageTk.PhotoImage(img)
+                    self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaBgHolder[s], tags=("charasBg"))
+                else:
+                    pass
+                
+                # draw character
+                imgpath = os.path.join(IMGPATH, "chara", "%s" % (self.round[s]['name']))
+                imgpath = addImgExt(imgpath)
                 if os.path.exists(imgpath):
                     if self.round[s]['rank'] in ['5u', '4u'] and not NOPIL:
                         img = Image.open(imgpath)
@@ -293,6 +307,19 @@ class Application(Frame):
                     self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaImgHolder[s], tags=("charas"))
                 else:
                     self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'], tags=("charas"))
+                
+                # draw border
+                imgpath = os.path.join(IMGPATH, "util", "charatemplate_border_%dstar" % {'5u':5, '5':5, '4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
+                imgpath = addImgExt(imgpath)
+                if os.path.exists(imgpath):
+                    img = Image.open(imgpath)
+                    img = img.resize((70, 70))
+                    self.charaBorderHolder[s] = ImageTk.PhotoImage(img)
+                    self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaBorderHolder[s], tags=("charasBg"))
+                else:
+                    pass
+
+                self.orbs += [5,4,4,4,3][Nonenum]
                 self.statistics[self.round[s]['rank']].append(self.round[s]['name'])
                 self.colorList[s] = self.round[s]['name']
                 self.round[s] = None
@@ -332,7 +359,7 @@ class Application(Frame):
             parse_or[i] = exp
         exp = " or ".join(parse_or)
         return safeeval(exp, {'collection': collection})
-        
+
         # exp = stopStr.split()
         # for i in range(len(exp)):
         #     if exp[i] not in ['and', 'or', 'not'] and not exp[i].isdigit():
@@ -359,6 +386,15 @@ def safeeval(string, dict) :
         if reason:
             raise NameError(f'{name} not allowed : {reason}')
     return eval(code, dict)
+
+def addImgExt(path):
+    imgext = [".png", ".PNG", ".jpg", ".jpeg", ".JPG", ".bmp", ".BMP", ".webp"]
+    for ext in imgext:
+        imgpath = path + ext
+        if os.path.exists(imgpath):
+            break
+        imgpath = path + ".png"
+    return imgpath
 
 
 if __name__ == "__main__":
