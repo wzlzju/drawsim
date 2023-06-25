@@ -14,6 +14,7 @@ COLORS = ["red", "blue", "green", "gray"]
 MODES = ["normal", "special", "herofest", "double", "legendary", "weekly"]
 IMGPATH = "./img"
 
+
 class Application(Frame):
     def __init__(self, master=None):
         super().__init__(master)
@@ -26,10 +27,10 @@ class Application(Frame):
         self.mode = IntVar(self, 0)
         self.up = {
             '5u':{
-                'red': StringVar(self, "依娜拉"),
-                'blue': StringVar(self, "鲁弗莱"),
-                'green': StringVar(self, "塞内里奥"),
-                'gray': StringVar(self, "古尔维格")
+                'red': StringVar(self, "Corrin(F) (Brave)"),
+                'blue': StringVar(self, "Robin(M) (Brave)"),
+                'green': StringVar(self, "Soren (Brave)"),
+                'gray': StringVar(self, "Gullveig (Brave)")
             },
             '4u':{
                 'red': StringVar(self, ""),
@@ -38,6 +39,7 @@ class Application(Frame):
                 'gray': StringVar(self, "")
             }
         }
+        self.cheatmode = BooleanVar(self, False)
         
         self.ballParas = {
             "cx": 150,
@@ -54,11 +56,12 @@ class Application(Frame):
             self.balls.append((x0-r, y0-r, x0+r, y0+r))
 
         self.strategyStr = StringVar(self, "Rwgb")
-        self.stopStr = StringVar(self, "依娜拉 11 or 古尔维格 11")
+        self.stopStr = StringVar(self, "Corrin(F) (Brave) 11 or Gullveig (Brave) 11")
         self.simu_num = StringVar(self, "1000")
 
         self.initialize()
         self.createWidget()
+        self.inputConfirm()
 
     def initialize(self):
         probs, charas = self.parseUserInput(self.up, self.mode)
@@ -118,7 +121,9 @@ class Application(Frame):
         for i, mode in enumerate(MODES):
             radio=Radiobutton(self.modeInput, text=mode, value=i, variable=self.mode)
             radio.grid(row=i+1, column=0, padx=5, pady=5, sticky="w")
-        Button(self.inputPanel, text='confirm',width=8,command=self.inputConfirm).grid(row=2, column=0, padx=5, pady=5)
+        Checkbutton(self.inputPanel, highlightthickness=0, text="cheating mode", variable=self.cheatmode, onvalue=True, offvalue=False, 
+            command=self.update_CHEAT).grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        Button(self.inputPanel, text='confirm',width=8,command=self.inputConfirm).grid(row=3, column=0, padx=5, pady=5)
 
         self.drawPanel = Canvas(self, highlightthickness=0)
         self.drawPanel.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
@@ -209,6 +214,9 @@ class Application(Frame):
             self.list34.insert(END, i)
         for i in self.statistics['34']:
             self.list34.insert(END, i)
+    
+    def update_CHEAT(self):
+        self.updateCanvas()
 
     def parseUserInput(self, up=None, mode=None):
         if not up:
@@ -260,6 +268,8 @@ class Application(Frame):
                 self.canvas.create_image(x0, y0,image=self.ballImgHolder[i], tags=("balls"))
             else:
                 self.canvas.create_oval(*self.balls[i], fill=self.colorList[i], tags=("balls"))
+            if self.cheatmode.get():
+                self.canvas.create_text(x0, y0, text=self.round[i]['name']+'  '+self.round[i]['rank'], tags=("charas"))
     
     def selectBall(self, event):
         def inBox(x1,y1,x2,y2, x,y):
@@ -331,9 +341,9 @@ class Application(Frame):
         wanted = []
         unwanted = []
         for c in strategyStr:
-            if c == c.upper() and c in ['R','B','G','W']:
+            if c in ['R','B','G','W']:
                 wanted.append({'R':'red', 'B':'blue', 'G':'green', 'W':'gray'}[c])
-            elif c == c.lower() and c in ['r','b','g','w']:
+            elif c in ['r','b','g','w']:
                 unwanted.append({'r':'red', 'b':'blue', 'g':'green', 'w':'gray'}[c])
         ret = []
         for i,color in enumerate(colorList):
@@ -343,6 +353,26 @@ class Application(Frame):
             for color in unwanted:
                 if color in colorList:
                     ret.append(colorList.index(color))
+                    break
+        return ret
+    
+    def simu_selectStrategyCheat(self, round):
+        strategyStr = self.strategyStr.get()
+        rankList = [ch['rank'] for ch in round]
+        wanted = []
+        unwanted = []
+        for r in strategyStr.split(" "):
+            if r in ['5u','5','4to5','4u','34']:
+                wanted.append(r)
+        unwanted = [r for r in ['5u','5','4to5','4u','34'] if r not in wanted]
+        ret = []
+        for i,r in enumerate(rankList):
+            if r in wanted:
+                ret.append(i)
+        if len(ret) == 0:
+            for r in unwanted:
+                if r in rankList:
+                    ret.append(rankList.index(r))
                     break
         return ret
 
@@ -367,7 +397,12 @@ class Application(Frame):
         # return safeeval(" ".join(exp), {'collection': collection})
     
     def simu(self):
-        orbres = self.simulationObj.simu(int(self.simu_num.get()))
+        if self.cheatmode.get():
+            self.simulationObj.strategy = self.simu_selectStrategyCheat
+            orbres = self.simulationObj.simu_withInfo(int(self.simu_num.get()))
+        else:
+            self.simulationObj.strategy = self.simu_selectStrategy
+            orbres = self.simulationObj.simu(int(self.simu_num.get()))
         self.plot.clear()
         self.plot.hist(orbres, bins=20)
         self.canvas_tk_agg.draw()

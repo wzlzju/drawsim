@@ -156,6 +156,26 @@ class drawsimulation(object):
                     break
             orbres.append(orbs)
         return orbres
+    
+    def simu_withInfo(self, N=10000):
+        orbres = []
+        for i in range(N):
+            orbs = 0
+            collection = {}
+            while True:
+                round = self.gacha.rollARound()
+                selection = self.strategy(round)
+                orbs += [5,5+4,5+4+4,5+4+4+4,5+4+4+4+3][len(selection)-1]
+                charas = [round[s]['name'] for s in selection]
+                for c in charas:
+                    if c in list(collection.keys()):
+                        collection[c] += 1
+                    else:
+                        collection[c] = 1
+                if self.terminate(collection):
+                    break
+            orbres.append(orbs)
+        return orbres
             
 
 

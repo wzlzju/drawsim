@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 global p5u, p5, chains, orb, targetcounts
 
 character_pool = {
-	"5u": ["r5a", "b5a", "g5a", "w5a"],
+	"5u": ["r5a", "b5a", "g5a", "g5b"],
 	"5": ["r5x"]*33 + ["b5x"]*28 + ["g5x"]*22 + ["w5x"]*20,
 	"4": ["r4x"]*38 + ["b4x"]*43 + ["g4x"]*32 + ["w4x"]*40
 }
 
-target = ["g", "w", "r", "b"]
+target = ["b", "g", "r", "w"]
 needed_orbs = [5, 4, 4, 4, 3]
 
 def generateARound():
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 			colors, ranks, characters = generateARound()
 			results = gachaStrategy(colors)
 			processResults(colors, ranks, characters, results)
-			if targetcounts["a"] >= 11:
+			if targetcounts["a"] >= 9:
 				full_bl_1.append(orb)
 				break
 	
