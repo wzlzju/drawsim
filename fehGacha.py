@@ -1,4 +1,4 @@
-import random, math
+import random, math, copy
 
 from fehdata import data
 
@@ -26,7 +26,7 @@ class gacha(object):
         } for c in data['heroes'] if c['rating'] in [2, 20]]
         self.mode = mode
 
-        self.cprobs = self.probs
+        self.cprobs = copy.deepcopy(self.probs)
         self.count = 0
         self.lantern = 0
 
@@ -41,7 +41,7 @@ class gacha(object):
     
     def processingSelection(self, round, selections):
         for s in selections:
-            crank = round[s]
+            crank = round[s]['rank']
             self.count += 1
             if self.count % 5 == 0:
                 p5 = self.cprobs['5u']+self.cprobs['5']+0.005
@@ -50,7 +50,7 @@ class gacha(object):
                 p5 = 1.0
                 self._updateProbability(p5)
             if crank == "5u":
-                self.cprobs = self.probs
+                self.cprobs = copy.deepcopy(self.probs)
                 self.count = 0
                 if self.lantern >= 3:
                     self.lantern = 0
@@ -64,6 +64,7 @@ class gacha(object):
             if self.lantern >= 3: # to disable lantern mechanism, set self.lantern == math.inf
                 self.cprobs['5u'] = self.cprobs['5u']+self.cprobs['5']
                 self.cprobs['5'] = 0.0
+        # print(self.cprobs, self.count, self.lantern)
     
     def _updateProbability(self, p5):
         pnon5 = 1-p5
@@ -72,6 +73,11 @@ class gacha(object):
         self.cprobs['4to5'] = pnon5*self.probs['4to5']/(self.probs['4u']+self.probs['4to5']+self.probs['34'])
         self.cprobs['4u'] = pnon5*self.probs['4u']/(self.probs['4u']+self.probs['4to5']+self.probs['34'])
         self.cprobs['34'] = pnon5*self.probs['34']/(self.probs['4u']+self.probs['4to5']+self.probs['34'])
+    
+    def clear(self):
+        self.cprobs = copy.deepcopy(self.probs)
+        self.count = 0
+        self.lantern = 0
 
 class drawing(object):
     def __init__(self, up, mode="normal"):
@@ -139,12 +145,14 @@ class drawsimulation(object):
     def simu(self, N=10000):
         orbres = []
         for i in range(N):
+            self.gacha.clear()
             orbs = 0
             collection = {}
             while True:
                 round = self.gacha.rollARound()
                 colorList = [c['color'] for c in round]
                 selection = self.strategy(colorList)
+                self.gacha.processingSelection(round, selection)
                 orbs += [5,5+4,5+4+4,5+4+4+4,5+4+4+4+3][len(selection)-1]
                 charas = [round[s]['name'] for s in selection]
                 for c in charas:
@@ -160,11 +168,13 @@ class drawsimulation(object):
     def simu_withInfo(self, N=10000):
         orbres = []
         for i in range(N):
+            self.gacha.clear()
             orbs = 0
             collection = {}
             while True:
                 round = self.gacha.rollARound()
                 selection = self.strategy(round)
+                self.gacha.processingSelection(round, selection)
                 orbs += [5,5+4,5+4+4,5+4+4+4,5+4+4+4+3][len(selection)-1]
                 charas = [round[s]['name'] for s in selection]
                 for c in charas:

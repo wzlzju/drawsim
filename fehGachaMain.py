@@ -293,6 +293,8 @@ class Application(Frame):
             if self.round[s] is None:
                 pass
             else:
+                self.gacha.processingSelection(self.round, [s])
+
                 # draw background
                 imgpath = os.path.join(IMGPATH, "util", "charatemplate_bg_%dstar" % {'5u':5, '5':5, '4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
                 imgpath = addImgExt(imgpath)
@@ -335,6 +337,7 @@ class Application(Frame):
                 self.round[s] = None
         
         self.updateStatistics()
+        # print(self.gacha.cprobs, self.gacha.count, self.gacha.lantern)
     
     def simu_selectStrategy(self, colorList):
         strategyStr = self.strategyStr.get()
