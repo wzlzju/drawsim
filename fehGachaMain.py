@@ -409,6 +409,12 @@ class Application(Frame):
         self.plot.clear()
         self.plot.hist(orbres, bins=20)
         self.canvas_tk_agg.draw()
+		miu = mean(orbres)
+		sigma = (mean([(i-miu)**2 for i in orbres]))**0.5
+		print(miu)
+		print(miu-sigma, miu+sigma)
+		print(miu-sigma*2, miu+sigma*2)
+		print(miu-sigma*3, miu+sigma*3)
 
 def safeeval(string, dict) :
     code = compile(string,'<user input>','eval')
