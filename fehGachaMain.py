@@ -27,10 +27,10 @@ class Application(Frame):
         self.mode = IntVar(self, 0)
         self.up = {
             '5u':{
-                'red': StringVar(self, "Corrin(F) (Brave)"),
-                'blue': StringVar(self, "Robin(M) (Brave)"),
+                'red': StringVar(self, "Robin(M) (Brave)"),
+                'blue': StringVar(self, "Gullveig (Brave)"),
                 'green': StringVar(self, "Soren (Brave)"),
-                'gray': StringVar(self, "Gullveig (Brave)")
+                'gray': StringVar(self, "Corrin(F) (Brave)")
             },
             '4u':{
                 'red': StringVar(self, ""),
@@ -55,8 +55,8 @@ class Application(Frame):
             r = self.ballParas['r']/2
             self.balls.append((x0-r, y0-r, x0+r, y0+r))
 
-        self.strategyStr = StringVar(self, "Rwgb")
-        self.stopStr = StringVar(self, "Corrin(F) (Brave) 11 or Gullveig (Brave) 11")
+        self.strategyStr = StringVar(self, "Wbgr")
+        self.stopStr = StringVar(self, "Corrin(F) (Brave) 9 and Gullveig (Brave) 10 or Corrin(F) (Brave) 10 and Gullveig (Brave) 9")
         self.simu_num = StringVar(self, "1000")
 
         self.initialize()

@@ -15,12 +15,14 @@ def crawl():
     for i, hero in enumerate(data["heroes"]):
         name = hero["name"]
         try:
-            img_bin = requests.get(url=url(name),headers=headers).content
-            img=Image.open(io.BytesIO(img_bin))
-            img = img.resize((60, 60))
-            img.save("./img/chara/%s.png" % name)
-            print(i, name)
-            time.sleep(0.1)
+            chpath = "./img/chara/%s.png" % name
+            if not os.path.exists(chpath):
+                img_bin = requests.get(url=url(name),headers=headers).content
+                img=Image.open(io.BytesIO(img_bin))
+                img = img.resize((60, 60))
+                img.save(chpath)
+                print(i, name)
+                time.sleep(0.1)
         except:
             print("ERROR", name)
 
