@@ -192,7 +192,9 @@ class Application(Frame):
 
     def updateInfo(self):
         self.infobox.delete('1.0', END)
-        ts = "Consumed Orbs:\t%d" % (self.orbs)
+        probs = self.gacha.cprobs
+        ts = "  ".join(["%s:%.2f%%" % (rank, probs[rank]*100) for rank in probs.keys()])+"\n"
+        ts += "Consumed Orbs:\t%d" % (self.orbs)
         for rank in ['5u', '5', '4to5', '4u', '34']:
             ts += "\n%s:\t%d" % ({'5u':'5*up', '5':'5*', '4to5':'4->5', '4u':'4*up', '34':'34*'}[rank], len(self.statistics[rank]))
 
