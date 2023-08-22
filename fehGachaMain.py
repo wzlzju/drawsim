@@ -55,7 +55,7 @@ class Application(Frame):
             r = self.ballParas['r']/2
             self.balls.append((x0-r, y0-r, x0+r, y0+r))
 
-        self.strategyStr = StringVar(self, "Wbgr")
+        self.strategyStr = StringVar(self, "WBgr")
         self.stopStr = StringVar(self, "Corrin(F) (Brave) 9 and Gullveig (Brave) 10 or Corrin(F) (Brave) 10 and Gullveig (Brave) 9")
         self.simu_num = StringVar(self, "1000")
 
@@ -411,8 +411,7 @@ class Application(Frame):
         self.plot.clear()
         self.plot.hist(orbres, bins=20)
         self.canvas_tk_agg.draw()
-        def mean(a):
-            return sum(a)/len(a)
+        mean = lambda a:sum(a)/len(a)
         miu = mean(orbres)
         sigma = (mean([(i-miu)**2 for i in orbres]))**0.5
         print(miu)
