@@ -32,8 +32,10 @@ class gacha(object):
 
     def rollARound(self):
         round = [None] * 5
+        ranks = list(self.cprobs.keys())
+        probs = list(self.cprobs.values())
         for i in range(5):
-            charaRank = random.choices(list(self.cprobs.keys()), list(self.cprobs.values()))[0]
+            charaRank = random.choices(ranks, probs)[0]
             chara = random.choice(self.charas[charaRank])
             round[i] = chara
             round[i]['rank'] = charaRank
@@ -141,7 +143,7 @@ class drawsimulation(object):
         self.gacha = gacha
         self.strategy = strategy
         self.terminate = terminate
-    
+
     def simu(self, N=10000):
         orbres = []
         for i in range(N):

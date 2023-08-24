@@ -55,9 +55,9 @@ class Application(Frame):
             r = self.ballParas['r']/2
             self.balls.append((x0-r, y0-r, x0+r, y0+r))
 
-        self.strategyStr = StringVar(self, "WBgr")
-        self.stopStr = StringVar(self, "Corrin(F) (Brave) 9 and Gullveig (Brave) 10 or Corrin(F) (Brave) 10 and Gullveig (Brave) 9")
-        self.simu_num = StringVar(self, "1000")
+        self.strategyStr = StringVar(self, "Wbgr")
+        self.stopStr = StringVar(self, "Corrin(F) (Brave) 9")
+        self.simu_num = StringVar(self, "10000")
 
         self.initialize()
         self.createWidget()
@@ -382,6 +382,9 @@ class Application(Frame):
         return ret
 
     def simu_stopStrategy(self, collection):
+        return eval(self.simuStopFunc, {'collection': collection})
+    
+    def compile_simuStopFunc(self):
         stopStr = self.stopStr.get()
         parse_or = stopStr.split(" or ")
         for i, exp_or in enumerate(parse_or):
@@ -393,15 +396,10 @@ class Application(Frame):
             exp = " and ".join(parse_and)
             parse_or[i] = exp
         exp = " or ".join(parse_or)
-        return safeeval(exp, {'collection': collection})
-
-        # exp = stopStr.split()
-        # for i in range(len(exp)):
-        #     if exp[i] not in ['and', 'or', 'not'] and not exp[i].isdigit():
-        #         exp[i] = "collection.get('%s',0) >=" % (exp[i])
-        # return safeeval(" ".join(exp), {'collection': collection})
+        self.simuStopFunc = safecompile(exp)
     
     def simu(self):
+        self.compile_simuStopFunc()
         if self.cheatmode.get():
             self.simulationObj.strategy = self.simu_selectStrategyCheat
             orbres = self.simulationObj.simu_withInfo(int(self.simu_num.get()))
@@ -418,6 +416,21 @@ class Application(Frame):
         print(miu-sigma, miu+sigma)
         print(miu-sigma*2, miu+sigma*2)
         print(miu-sigma*3, miu+sigma*3)
+
+def safecompile(string):
+    code = compile(string,'<user input>','eval')
+    reason = None
+    banned = ('eval','compile','exec','getattr','hasattr','setattr','delattr',
+            'classmethod','globals','help','input','isinstance','issubclass','locals',
+            'open','print','property','staticmethod','vars')
+    for name in code.co_names:
+        if re.search(r'^__\S*__$',name):
+            reason = 'dunder attributes not allowed'
+        elif name in banned:
+            reason = 'arbitrary code execution not allowed'
+        if reason:
+            raise NameError(f'{name} not allowed : {reason}')
+    return code
 
 def safeeval(string, dict) :
     code = compile(string,'<user input>','eval')
