@@ -218,7 +218,7 @@ class Application(Frame):
             self.list34.insert(END, i)
     
     def update_CHEAT(self):
-        self.updateCanvas()
+        self.updateCheatingInfoonCanvas()
 
     def parseUserInput(self, up=None, mode=None):
         if not up:
@@ -263,15 +263,22 @@ class Application(Frame):
         for i in range(len(self.balls)):
             imgpath = os.path.join(IMGPATH, "util", "%s"%self.colorList[i])
             imgpath = addImgExt(imgpath)
+            x0 = (self.balls[i][0]+self.balls[i][2])/2
+            y0 = (self.balls[i][1]+self.balls[i][3])/2
             if os.path.exists(imgpath):
                 self.ballImgHolder[i] = PhotoImage(file=imgpath)
-                x0 = (self.balls[i][0]+self.balls[i][2])/2
-                y0 = (self.balls[i][1]+self.balls[i][3])/2
                 self.canvas.create_image(x0, y0,image=self.ballImgHolder[i], tags=("balls"))
             else:
                 self.canvas.create_oval(*self.balls[i], fill=self.colorList[i], tags=("balls"))
-            if self.cheatmode.get():
-                self.canvas.create_text(x0, y0, text=self.round[i]['name']+'  '+self.round[i]['rank'], tags=("charas"))
+            self.updateCheatingInfoonCanvas()
+    
+    def updateCheatingInfoonCanvas(self):
+        self.canvas.delete("cheating")
+        for i in range(len(self.balls)):
+            x0 = (self.balls[i][0]+self.balls[i][2])/2
+            y0 = (self.balls[i][1]+self.balls[i][3])/2
+            if self.cheatmode.get() and self.round[i]:
+                self.canvas.create_text(x0, y0, text=self.round[i]['name']+'  '+self.round[i]['rank'], tags=("charas_name", "cheating"))
     
     def selectBall(self, event):
         def inBox(x1,y1,x2,y2, x,y):
@@ -320,7 +327,7 @@ class Application(Frame):
                         self.charaImgHolder[s] = PhotoImage(file=imgpath)
                     self.canvas.create_image((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, image=self.charaImgHolder[s], tags=("charas"))
                 else:
-                    self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'], tags=("charas"))
+                    self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'], tags=("charas_name"))
                 
                 # draw border
                 imgpath = os.path.join(IMGPATH, "util", "charatemplate_border_%dstar" % {'5u':5, '5':5, '4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
@@ -335,9 +342,10 @@ class Application(Frame):
 
                 self.orbs += [5,4,4,4,3][Nonenum]
                 self.statistics[self.round[s]['rank']].append(self.round[s]['name'])
-                self.colorList[s] = self.round[s]['name']
+                # self.colorList[s] = self.round[s]['name']
                 self.round[s] = None
         
+        self.updateCheatingInfoonCanvas()
         self.updateStatistics()
         # print(self.gacha.cprobs, self.gacha.count, self.gacha.lantern)
     
