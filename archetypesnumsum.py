@@ -18,8 +18,8 @@ for id, code, alias in cards:
 		css = cs[-4:]
 		cs = cs[:-4]
 		css = css.zfill(4)
-		if css[:2] != "00":
-			tcss = "00"+css[2:]
+		if css[:1] != "0":
+			tcss = "0"+css[1:]
 			if cc.get(tcss, None) is None:
 				cc[tcss] = 0
 			cc[tcss] += 1
@@ -42,11 +42,11 @@ with open("strings.conf", "r", encoding="utf-8", errors="ignore") as f:
 		name = ls[1]#s[splitpos+1:]
 		c2t[code] = name
 		
-cd = [(c2t.get(int(a,16), "0x"+a),cc[a]) if a!="0000" else ("————",cc[a]) for a in cc.keys()]
-cd.sort(key=lambda x:x[1], reverse=True)
+cd = [(c2t.get(int(a,16), "0x"+a),"0x"+a, cc[a]) if a!="0000" else ("————","0",cc[a]) for a in cc.keys()]
+cd.sort(key=lambda x:x[-1], reverse=True)
 
 s = ""
-for k, v in cd:
-	s += k.replace("\n", "") + "\t" + str(v) + "\n"
+for k, q, v in cd:
+	s += k.replace("\n", "") + "\t" + q +"\t" + str(v) + "\n"
 with open("archetypesnumrank.txt", "w", encoding="utf-8") as f:
 	f.write(s)
