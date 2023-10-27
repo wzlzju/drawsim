@@ -19,7 +19,7 @@ class gacha(object):
         self.charas['4to5'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] in [3, 30]]
+        } for c in data['heroes'] if c['rating'] in [3, 30] or c['name']=="Ephraim (DM)"]
         self.charas['34'] = [{
             'name': c['name'],
             'color': c['color']

@@ -1,7 +1,7 @@
 from tkinter import *
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import random, math, re, os
+import random, math, re, os, collections
 
 import fehGacha as gacha
 try:
@@ -203,19 +203,27 @@ class Application(Frame):
     def updateList(self):
         self.list5.delete(0, END)
         self.list5.insert(END, "5*")
-        for i in self.statistics['5u']:
-            self.list5.insert(END, i)
-        for i in self.statistics['5']:
-            self.list5.insert(END, i)
-        for i in self.statistics['4to5']:
-            self.list5.insert(END, i)
+        for rank in ['5u','5','4to5']:
+            counter = collections.Counter(self.statistics[rank])
+            for k in counter.keys():
+                self.list5.insert(END, "%s: %d"%(k,counter[k]))
+        self.list5.insert(END, "")
+        self.list5.insert(END, "DETAILS")
+        for rank in ['5u','5','4to5']:
+            for i in self.statistics[rank]:
+                self.list5.insert(END, i)
         
         self.list34.delete(0, END)
         self.list34.insert(END, "34*")
-        for i in self.statistics['4u']:
-            self.list34.insert(END, i)
-        for i in self.statistics['34']:
-            self.list34.insert(END, i)
+        for rank in ['4u','34']:
+            counter = collections.Counter(self.statistics[rank])
+            for k in counter.keys():
+                self.list34.insert(END, "%s: %d"%(k,counter[k]))
+        self.list5.insert(END, "")
+        self.list34.insert(END, "DETAILS")
+        for rank in ['4u','34']:
+            for i in self.statistics[rank]:
+                self.list34.insert(END, i)
     
     def update_CHEAT(self):
         self.updateCheatingInfoonCanvas()
