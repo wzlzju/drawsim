@@ -7,6 +7,7 @@ INIT_P = 0.006
 BDSTART = 59
 BDEND = 80
 UP_IN_5_P = 0.5
+BBD = 2
 
 def P(d):
     if d < BDSTART:
@@ -16,35 +17,40 @@ def P(d):
 
 def drawonce():
     sum = 0
-    for i in range(1, BDEND+1):
-        p = P(i)
-        if random.random() < p:
-            sum += i
-            break
-    if random.random() >= UP_IN_5_P:
+    for BDTIME in range(1, BBD+1):
         for i in range(1, BDEND+1):
             p = P(i)
             if random.random() < p:
                 sum += i
                 break
-    
+        if BDTIME==BBD or random.random()<UP_IN_5_P:
+            break
+
     return sum
 
 def drawsim(N=10000):
     return [drawonce() for _ in range(N)]
 
-def densitycurve(x, samples):
+def densitycurve(x=None, samples=None):
+    if not samples:
+        return
+    if not x:
+        x = list(range(min(samples), max(samples)+1))
     num = len(samples)
     counter = collections.Counter(samples)
     return [counter[i]/num for i in x]
 
-def masscurve(x, samples, PDF=None):
+def masscurve(x=None, samples=None, PDF=None):
+    if not samples:
+        return
+    if not x:
+        x = list(range(min(samples), max(samples)+1))
     if not PDF:
         PDF = densitycurve(x, samples)
     return [sum(PDF[:i+1]) for i in range(len(PDF))]
 
 def drawprobabilitycurve(draws):
-    x = list(range(1, int(BDEND/UP_IN_5_P)+1))
+    x = list(range(1, BDEND*BBD+1))
     y = densitycurve(x, draws)
     plt.plot(x, y)
     plt.show()

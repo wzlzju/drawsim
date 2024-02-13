@@ -1,6 +1,6 @@
 from tkinter import *
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import random, math, re, os, collections
 
 import fehGacha as gacha
@@ -77,6 +77,7 @@ class Application(Frame):
             '34': []
         }
         self.orbs = 0
+        self.simu_orbres = None
 
         self.round = self.gacha.rollARound()
         self.colorList = [c['color'] for c in self.round]
@@ -159,26 +160,33 @@ class Application(Frame):
         self.plot = self.figure.add_subplot(111)
         self.canvas_tk_agg = FigureCanvasTkAgg(self.figure, master=self.simuPanel)
         self.canvas_tk_agg.get_tk_widget().grid(row=0,column=0,rowspan=4,columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.simu_plot_toolbar = NavigationToolbar2Tk(self.canvas_tk_agg, self.simuPanel, pack_toolbar=False)
+        self.simu_plot_toolbar.grid(row=4,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
 
         self.strategyInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
-        self.strategyInput.grid(row=4,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.strategyInput.grid(row=5,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.strategyInput, text="Drawing strategy: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.strategyInput, textvariable=self.strategyStr).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
         self.stopInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
-        self.stopInput.grid(row=5,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.stopInput.grid(row=6,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.stopInput, text="Stop when: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.stopInput, textvariable=self.stopStr).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
         self.simuNumInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
-        self.simuNumInput.grid(row=6,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.simuNumInput.grid(row=7,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.simuNumInput, text="Simulation number: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.simuNumInput, textvariable=self.simu_num).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        Button(self.simuPanel, text='simulate',width=8,command=self.simu).grid(row=7,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        Button(self.simuPanel, text='simulate',width=20,command=self.simu).grid(row=8,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        self.simuplotswitchbuttons = Canvas(self.simuPanel, highlightthickness=0)
+        self.simuplotswitchbuttons.grid(row=9, column=0, rowspan=1,columnspan=4, padx=5, pady=5, sticky="nsew")
+        Button(self.simuplotswitchbuttons, text='histogram',width=12,command=self.draw_simu_hist).grid(row=0,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        Button(self.simuplotswitchbuttons, text='density curve',width=12,command=self.draw_simu_density).grid(row=0,column=1,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        Button(self.simuplotswitchbuttons, text='mass curve',width=12,command=self.draw_simu_mass).grid(row=0,column=2,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
 
     def inputConfirm(self):
         self.initialize()
@@ -418,20 +426,68 @@ class Application(Frame):
         self.compile_simuStopFunc()
         if self.cheatmode.get():
             self.simulationObj.strategy = self.simu_selectStrategyCheat
-            orbres = self.simulationObj.simu_withInfo(int(self.simu_num.get()))
+            self.simu_orbres = self.simulationObj.simu_withInfo(int(self.simu_num.get()))
         else:
             self.simulationObj.strategy = self.simu_selectStrategy
-            orbres = self.simulationObj.simu(int(self.simu_num.get()))
+            self.simu_orbres = self.simulationObj.simu(int(self.simu_num.get()))
+        self.draw_simu_hist()
+        self.print_statistics()
+    
+    def draw_simu_hist(self, bins=20):
+        if not self.simu_orbres:
+            return
         self.plot.clear()
-        self.plot.hist(orbres, bins=20)
+        self.plot.hist(self.simu_orbres, bins=bins)
         self.canvas_tk_agg.draw()
+        self.simu_plot_toolbar.update()
+    
+    def draw_simu_density(self):
+        if not self.simu_orbres:
+            return
+        x = list(range(0, max(self.simu_orbres)+1))
+        y = densitycurve(x, self.simu_orbres)
+        self.plot.clear()
+        self.plot.plot(x, y)
+        self.canvas_tk_agg.draw()
+        self.simu_plot_toolbar.update()
+    
+    def draw_simu_mass(self):
+        if not self.simu_orbres:
+            return
+        x = list(range(0, max(self.simu_orbres)+1))
+        y = masscurve(x, self.simu_orbres)
+        self.plot.clear()
+        self.plot.plot(x, y)
+        self.canvas_tk_agg.draw()
+        self.simu_plot_toolbar.update()
+    
+    def print_statistics(self):
         mean = lambda a:sum(a)/len(a)
-        miu = mean(orbres)
-        sigma = (mean([(i-miu)**2 for i in orbres]))**0.5
+        miu = mean(self.simu_orbres)
+        sigma = (mean([(i-miu)**2 for i in self.simu_orbres]))**0.5
         print(miu)
         print(miu-sigma, miu+sigma)
         print(miu-sigma*2, miu+sigma*2)
         print(miu-sigma*3, miu+sigma*3)
+
+def densitycurve(x=None, samples=None):
+    if not samples:
+        return
+    if not x:
+        x = list(range(min(samples), max(samples)+1))
+    num = len(samples)
+    counter = collections.Counter(samples)
+    return [counter[i]/num for i in x]
+
+def masscurve(x=None, samples=None, PDF=None):
+    if not samples:
+        return
+    if not x:
+        x = list(range(min(samples), max(samples)+1))
+    if not PDF:
+        PDF = densitycurve(x, samples)
+    return [sum(PDF[:i+1]) for i in range(len(PDF))]
+
 
 def safecompile(string):
     code = compile(string,'<user input>','eval')
