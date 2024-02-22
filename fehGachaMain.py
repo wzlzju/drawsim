@@ -1,7 +1,7 @@
 from tkinter import *
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import random, math, re, os, collections
+import random, math, re, os, collections, copy
 
 import fehGacha as gacha
 try:
@@ -9,9 +9,14 @@ try:
     NOPIL = False
 except:
     NOPIL = True
+try:
+    from fehdata import data
+    NODATA = False
+except:
+    NODATA = True
 
 COLORS = ["red", "blue", "green", "gray"]
-MODES = ["normal", "special", "herofest", "double", "legendary", "weekly"]
+MODES = ["normal", "special", "special 4*", "herofest", "double", "legendary", "weekly"]
 IMGPATH = "./img"
 
 
@@ -74,6 +79,7 @@ class Application(Frame):
             '5': [],
             '4u': [],
             '4to5': [],
+            's4to5': [],
             '34': []
         }
         self.orbs = 0
@@ -89,7 +95,7 @@ class Application(Frame):
                                     charas=charas,
                                     mode=self.mode
                                 ),
-                                strategy=self.simu_selectStrategy,
+                                strategy=self.simu_selectStrategy if not self.cheatmode.get() else self.simu_selectStrategyCheat,
                                 terminate=self.simu_stopStrategy
                             )
         
@@ -203,21 +209,21 @@ class Application(Frame):
         probs = self.gacha.cprobs
         ts = "  ".join(["%s:%.2f%%" % (rank, probs[rank]*100) for rank in probs.keys()])+"\n"
         ts += "Consumed Orbs:\t%d" % (self.orbs)
-        for rank in ['5u', '5', '4to5', '4u', '34']:
-            ts += "\n%s:\t%d" % ({'5u':'5*up', '5':'5*', '4to5':'4->5', '4u':'4*up', '34':'34*'}[rank], len(self.statistics[rank]))
+        for rank in ['5u', '5', '4to5', 's4to5', '4u', '34']:
+            ts += "\n%s:\t%d" % ({'5u':'5*up', '5':'5*', '4to5':'4->5', 's4to5':'s 4->5', '4u':'4*up', '34':'34*'}[rank], len(self.statistics[rank]))
 
         self.infobox.insert('1.0', ts)
     
     def updateList(self):
         self.list5.delete(0, END)
         self.list5.insert(END, "5*")
-        for rank in ['5u','5','4to5']:
+        for rank in ['5u','5','4to5','s4to5']:
             counter = collections.Counter(self.statistics[rank])
             for k in counter.keys():
                 self.list5.insert(END, "%s: %d"%(k,counter[k]))
         self.list5.insert(END, "")
         self.list5.insert(END, "DETAILS")
-        for rank in ['5u','5','4to5']:
+        for rank in ['5u','5','4to5','s4to5']:
             for i in self.statistics[rank]:
                 self.list5.insert(END, i)
         
@@ -260,6 +266,11 @@ class Application(Frame):
                 probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "4u": 0.03, "34": 0.88}
             else:
                 probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "34": 0.91}
+        elif mode in ["special 4*"]:
+            if "4u" in list(charas.keys()) and len(charas['4u'])>0:
+                probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "s4to5":0.03, "4u": 0.03, "34": 0.85}
+            else:
+                probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "s4to5":0.03, "34": 0.88}
         elif mode in ["herofest"]:
             probs = {"5u": 0.05, "5": 0.03, "4to5": 0.03, "34": 0.89}
         elif mode in ["double"]:
@@ -321,7 +332,7 @@ class Application(Frame):
                 self.gacha.processingSelection(self.round, [s])
 
                 # draw background
-                imgpath = os.path.join(IMGPATH, "util", "charatemplate_bg_%dstar" % {'5u':5, '5':5, '4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
+                imgpath = os.path.join(IMGPATH, "util", "charatemplate_bg_%dstar" % {'5u':5, '5':5, '4to5':5, 's4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
                 imgpath = addImgExt(imgpath)
                 if os.path.exists(imgpath):
                     img = Image.open(imgpath)
@@ -346,7 +357,7 @@ class Application(Frame):
                     self.canvas.create_text((self.balls[s][0]+self.balls[s][2])/2, (self.balls[s][1]+self.balls[s][3])/2, text=self.round[s]['name']+'  '+self.round[s]['rank'], tags=("charas_name"))
                 
                 # draw border
-                imgpath = os.path.join(IMGPATH, "util", "charatemplate_border_%dstar" % {'5u':5, '5':5, '4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
+                imgpath = os.path.join(IMGPATH, "util", "charatemplate_border_%dstar" % {'5u':5, '5':5, '4to5':5, 's4to5':5, '4u': 4, '34':4}[self.round[s]['rank']])
                 imgpath = addImgExt(imgpath)
                 if os.path.exists(imgpath):
                     img = Image.open(imgpath)
@@ -391,9 +402,9 @@ class Application(Frame):
         wanted = []
         unwanted = []
         for r in strategyStr.split(" "):
-            if r in ['5u','5','4to5','4u','34']:
+            if r in ['5u','5','4to5','s4to5','4u','34']:
                 wanted.append(r)
-        unwanted = [r for r in ['5u','5','4to5','4u','34'] if r not in wanted]
+        unwanted = [r for r in ['5u','5','4to5','s4to5','4u','34'] if r not in wanted]
         ret = []
         for i,r in enumerate(rankList):
             if r in wanted:
@@ -410,16 +421,59 @@ class Application(Frame):
     
     def compile_simuStopFunc(self):
         stopStr = self.stopStr.get()
-        parse_or = stopStr.split(" or ")
-        for i, exp_or in enumerate(parse_or):
-            parse_and = exp_or.split(" and ")
-            for j, exp_and in enumerate(parse_and):
-                exps = exp_and.split(" ")
-                exp = ("collection.get('%s',0) >=" % (" ".join(exps[:-1])))+" "+exps[-1]
-                parse_and[j] = exp
-            exp = " and ".join(parse_and)
-            parse_or[i] = exp
-        exp = " or ".join(parse_or)
+        if NODATA:
+            parse_or = stopStr.split(" or ")
+            for i, exp_or in enumerate(parse_or):
+                parse_and = exp_or.split(" and ")
+                for j, exp_and in enumerate(parse_and):
+                    exps = exp_and.split(" ")
+                    exp = ("collection.get('%s',0) >=" % (" ".join(exps[:-1])))+" "+exps[-1]
+                    parse_and[j] = exp
+                exp = " and ".join(parse_and)
+                parse_or[i] = exp
+            exp = " or ".join(parse_or)
+        else:
+            exp = ""
+            # parse < >
+            while True:
+                i = stopStr.find('<')
+                if i == -1:
+                    exp += stopStr
+                    break
+                exp += stopStr[:i]
+                stopStr = stopStr[i+1:]
+                j = stopStr.find('>')
+                if j == -1:
+                    j = len(stopStr)
+                tmp = stopStr[:j]
+                stopStr = stopStr[j+1:]
+                identifier = tmp.strip().split()[0].lower()
+                color = tmp.strip().split()[1].lower()
+                num = int(tmp.strip().split()[2])
+                ttmp = {'all':' and ','one':' or '}[identifier].join(["%s %d"%(c['name'],num) for c in self.parseUserInput()[1]['5u'] if c['color']==color])
+                if ttmp == "":
+                    ttmp = "True"
+                exp += "(%s)"%ttmp
+            print(exp)
+            # parse name
+            for hero in data["heroes"]:
+                name = hero["name"]
+                pexp = copy.deepcopy(exp)
+                exp = ""
+                while True:
+                    i = pexp.find(name)
+                    if i == -1:
+                        exp += pexp
+                        break
+                    j = i+len(name)
+                    if pexp[j:].lstrip()[0:1].isnumeric():
+                        exp += pexp[:i]
+                        exp += "collection.get('%s',0) >="%name
+                    else:
+                        exp += pexp[:j]
+                    pexp = pexp[j:]
+            print(exp)
+        
         self.simuStopFunc = safecompile(exp)
     
     def simu(self):

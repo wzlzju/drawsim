@@ -4,11 +4,11 @@ from fehdata import data
 
 class gacha(object):
     def __init__(self, 
-                probs={"5u": 0.03, "5": 0.03, "4to5": 0.03, "34": 0.91}, # 5u, 5, 4u, 4to5, 34
+                probs={"5u": 0.03, "5": 0.03, "4to5": 0.03, "34": 0.91}, # 5u, 5, 4u, 4to5, s4to5, 34
                 charas={"5u": [{'name':'po', 'color': 'gray'}], "5": None, "4to5": None, "34": None},
                 mode="normal"):
         self.probs = probs
-        for prank in ['5u', '5', '4u', '4to5', '34']:
+        for prank in ['5u', '5', '4u', '4to5', 's4to5', '34']:
             if prank not in list(self.probs.keys()):
                 self.probs[prank] = 0.0
         self.charas = charas
@@ -20,6 +20,10 @@ class gacha(object):
             'name': c['name'],
             'color': c['color']
         } for c in data['heroes'] if c['rating'] in [3, 30] or c['name']=="Ephraim (DM)"]
+        self.charas['s4to5'] = [{
+            'name': c['name'],
+            'color': c['color']
+        } for c in data['heroes'] if c['rating'] in [7] and float(c['version'].replace(',','.'))<=data['special_4to5_version']]
         self.charas['34'] = [{
             'name': c['name'],
             'color': c['color']
@@ -72,9 +76,10 @@ class gacha(object):
         pnon5 = 1-p5
         self.cprobs['5u'] = p5*self.probs['5u']/(self.probs['5u']+self.probs['5'])
         self.cprobs['5'] = p5*self.probs['5']/(self.probs['5u']+self.probs['5'])
-        self.cprobs['4to5'] = pnon5*self.probs['4to5']/(self.probs['4u']+self.probs['4to5']+self.probs['34'])
-        self.cprobs['4u'] = pnon5*self.probs['4u']/(self.probs['4u']+self.probs['4to5']+self.probs['34'])
-        self.cprobs['34'] = pnon5*self.probs['34']/(self.probs['4u']+self.probs['4to5']+self.probs['34'])
+        self.cprobs['4to5'] = pnon5*self.probs['4to5']/(self.probs['4u']+self.probs['4to5']+self.probs['s4to5']+self.probs['34'])
+        self.cprobs['s4to5'] = pnon5*self.probs['s4to5']/(self.probs['4u']+self.probs['4to5']+self.probs['s4to5']+self.probs['34'])
+        self.cprobs['4u'] = pnon5*self.probs['4u']/(self.probs['4u']+self.probs['4to5']+self.probs['s4to5']+self.probs['34'])
+        self.cprobs['34'] = pnon5*self.probs['34']/(self.probs['4u']+self.probs['4to5']+self.probs['s4to5']+self.probs['34'])
     
     def clear(self):
         self.cprobs = copy.deepcopy(self.probs)
@@ -82,13 +87,18 @@ class gacha(object):
         self.lantern = 0
 
 class drawing(object):
-    def __init__(self, up, mode="normal"):
+    def __init__(self, up, mode="normal", given_probs=None):
         self.mode = mode
         if mode in ["normal", "special"]:
             if "4u" in list(up.keys()):
                 probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "4u": 0.03, "34": 0.88}
             else:
                 probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "34": 0.91}
+        elif mode in ["special 4*"]:
+            if "4u" in list(charas.keys()) and len(charas['4u'])>0:
+                probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "s4to5":0.03, "4u": 0.03, "34": 0.85}
+            else:
+                probs = {"5u": 0.03, "5": 0.03, "4to5": 0.03, "s4to5":0.03, "34": 0.88}
         elif mode in ["herofest"]:
             probs = {"5u": 0.05, "5": 0.03, "4to5": 0.03, "34": 0.89}
         elif mode in ["double"]:
@@ -99,6 +109,10 @@ class drawing(object):
                 probs = {"5u": 0.06, "4to5": 0.03, "34": 0.91}
         elif mode in ["legendary"]:
             probs = {"5u": 0.08, "4to5": 0.03, "34": 0.89}
+        elif mode in ["weekly"]:
+            probs = {"5u": 0.04, "5": 0.02, "4to5": 0.03, "34": 0.91}
+        if given_probs:
+            probs = given_probs
         charas = up
         self.gacha = gacha(probs=probs,
                             charas=charas,
@@ -108,6 +122,7 @@ class drawing(object):
             '5': [],
             '4u': [],
             '4to5': [],
+            's4to5': [],
             '34': []
         }
         self.orbs = 0
@@ -212,6 +227,6 @@ if __name__ == "__main__":
     for i in range(10):
         draw.draw()
     print("Orbs:", draw.orbs)
-    print("Statistics: 5: %d, 34: %d" % (len(draw.statistics['5u']+draw.statistics['5']+draw.statistics['4to5']), len(draw.statistics['4u']+draw.statistics['34'])))
-    print("5Star:", draw.statistics['5u']+draw.statistics['5']+draw.statistics['4to5'])
+    print("Statistics: 5: %d, 34: %d" % (len(draw.statistics['5u']+draw.statistics['5']+draw.statistics['4to5']+draw.statistics['s4to5']), len(draw.statistics['4u']+draw.statistics['34'])))
+    print("5Star:", draw.statistics['5u']+draw.statistics['5']+draw.statistics['4to5']+draw.statistics['s4to5'])
         
