@@ -63,6 +63,7 @@ class Application(Frame):
         self.strategyStr = StringVar(self, "Wbgr")
         self.stopStr = StringVar(self, "Corrin(F) (Brave) 9")
         self.simu_num = StringVar(self, "10000")
+        self.hist_bins = StringVar(self, "20")
 
         self.initialize()
         self.createWidget()
@@ -70,6 +71,13 @@ class Application(Frame):
 
     def initialize(self):
         probs, charas = self.parseUserInput(self.up, self.mode)
+        if NODATA:
+            self.tmpdata = {"heroes": []}
+        else:
+            self.tmpdata = {
+                "heroes": [chara for chara in charas['5u'] if chara['name'] not in set([hero['name'] for hero in data["heroes"]])] + \
+                            [chara for chara in charas['4u'] if chara['name'] not in set([hero['name'] for hero in data["heroes"]])]
+            }
 
         self.gacha = gacha.gacha(probs=probs,
                             charas=charas,
@@ -193,6 +201,16 @@ class Application(Frame):
         Button(self.simuplotswitchbuttons, text='histogram',width=12,command=self.draw_simu_hist).grid(row=0,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='density curve',width=12,command=self.draw_simu_density).grid(row=0,column=1,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='mass curve',width=12,command=self.draw_simu_mass).grid(row=0,column=2,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        self.binsInput = Canvas(self.simuPanel, highlightthickness=0)
+        self.binsInput.grid(row=10, column=0, padx=5, pady=5, sticky="nsew")
+        label=Label(self.binsInput, text="bins:")
+        label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        Entry(self.binsInput, textvariable=self.hist_bins, width=6).grid(row=0, column=1, padx=5, pady=5, sticky="w")
+
+        scrollbardebug_v = Scrollbar(self.simuPanel)
+        scrollbardebug_h = Scrollbar(self.simuPanel, orient=HORIZONTAL)
+        self.debugbox = Text(self.simuPanel,width=42,height=5,yscrollcommand=scrollbardebug_v.set, xscrollcommand=scrollbardebug_h.set, wrap=NONE)
+        self.debugbox.grid(row=11,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
 
     def inputConfirm(self):
         self.initialize()
@@ -213,6 +231,10 @@ class Application(Frame):
             ts += "\n%s:\t%d" % ({'5u':'5*up', '5':'5*', '4to5':'4->5', 's4to5':'s 4->5', '4u':'4*up', '34':'34*'}[rank], len(self.statistics[rank]))
 
         self.infobox.insert('1.0', ts)
+    
+    def debug_print(self, *args, **kwargs):
+        ts = ' '.join([str(_) for _ in args]) + '\n'
+        self.debugbox.insert(END, ts)
     
     def updateList(self):
         self.list5.delete(0, END)
@@ -454,10 +476,12 @@ class Application(Frame):
                 if ttmp == "":
                     ttmp = "True"
                 exp += "(%s)"%ttmp
-            print(exp)
+            self.debug_print(exp)
             # parse name
-            for hero in data["heroes"]:
+            for hero in data["heroes"]+self.tmpdata["heroes"]:
                 name = hero["name"]
+                if name == 'a':
+                    ttt=1
                 pexp = copy.deepcopy(exp)
                 exp = ""
                 while True:
@@ -466,13 +490,16 @@ class Application(Frame):
                         exp += pexp
                         break
                     j = i+len(name)
-                    if pexp[j:].lstrip()[0:1].isnumeric():
+                    if pexp[j:].lstrip()[0:1].isnumeric() and (i==0 or pexp[i-1] in [' ','(']):
                         exp += pexp[:i]
                         exp += "collection.get('%s',0) >="%name
                     else:
+                        k = pexp[j:].find(' ')
+                        if k != -1:
+                            j += k
                         exp += pexp[:j]
                     pexp = pexp[j:]
-            print(exp)
+            self.debug_print(exp)
         
         self.simuStopFunc = safecompile(exp)
     
@@ -490,6 +517,11 @@ class Application(Frame):
     def draw_simu_hist(self, bins=20):
         if not self.simu_orbres:
             return
+        try:
+            bins = int(self.hist_bins.get())
+        except Exception as e:
+            self.debug_print("Invalid bins:", bins)
+            self.debug_print(type(e), e)
         self.plot.clear()
         self.plot.hist(self.simu_orbres, bins=bins)
         self.canvas_tk_agg.draw()
@@ -519,10 +551,10 @@ class Application(Frame):
         mean = lambda a:sum(a)/len(a)
         miu = mean(self.simu_orbres)
         sigma = (mean([(i-miu)**2 for i in self.simu_orbres]))**0.5
-        print(miu)
-        print(miu-sigma, miu+sigma)
-        print(miu-sigma*2, miu+sigma*2)
-        print(miu-sigma*3, miu+sigma*3)
+        self.debug_print(miu)
+        self.debug_print(miu-sigma, miu+sigma)
+        self.debug_print(miu-sigma*2, miu+sigma*2)
+        self.debug_print(miu-sigma*3, miu+sigma*3)
 
 def densitycurve(x=None, samples=None):
     if not samples:
