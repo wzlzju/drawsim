@@ -33,39 +33,44 @@ class charaPanel(object):
         self.options = {
             "color": set(),
             "move": set(),
-            "weapon": set()
+            "weapon": set(),
+            "version": set()
         }
 
-        self.buttonList = []
-        self.buttonImgHolder = []
-        self.results = Canvas(self.root, width=300, height=130, bg="white", highlightthickness=0)
+        self.results = Canvas(self.root, bg="white", highlightthickness=0)
         self.results.grid(row=0, column=0, rowspan=2, columnspan=4, padx=5, pady=5, sticky="nsew")
         
-        self.buttons = Canvas(self.root, width=300, height=200, bg="white", highlightthickness=0)
-        self.buttons.grid(row=2, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
-
+        self.buttonList = []
+        self.buttonImgHolder = []
+        self.buttons = Canvas(self.root, bg="white", highlightthickness=0)
+        self.buttons.grid(row=2, column=0, rowspan=5, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.w_num = len(COLORS)+len(MOVES)
         for i, color in enumerate(COLORS):
             self.getimage(self.buttonImgHolder, "util/"+color, (30, 30))
             tags = ("color", color)
-            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=i,t=tags: self.buttonFunc(i,t))
-            button.grid(row=0, column=i, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
+            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
+            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
             self.buttonList.append(button)
         for i, move in enumerate(MOVES):
             self.getimage(self.buttonImgHolder, "util/"+move, (30, 30))
             tags = ("move", move)
-            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=i+4,t=tags: self.buttonFunc(i,t))
-            button.grid(row=0, column=i+len(COLORS), rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
+            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
+            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
             self.buttonList.append(button)
         for i, weapon in enumerate(WEAPONS):
             self.getimage(self.buttonImgHolder, "util/"+weapon, (30, 30))
             tags = ("weapon", weapon)
-            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=i+8,t=tags: self.buttonFunc(i,t))
-            button.grid(row=i//(len(COLORS)+len(MOVES))+1, column=i%(len(COLORS)+len(MOVES)), rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
+            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
+            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
+            self.buttonList.append(button)
+        for i, version in enumerate(VERSIONS):
+            tags = ("version", version)
+            button = Button(self.buttons, text=str(version), command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
+            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
             self.buttonList.append(button)
 
-
-        self.charas = Canvas(self.root, width=300, height=250, bg="white", highlightthickness=0)
-        self.charas.grid(row=6, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.charas = Canvas(self.root, bg="white", highlightthickness=0)
+        self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
 
         if setting:
             if setting.get("color", None):
@@ -74,6 +79,8 @@ class charaPanel(object):
                 self.options["move"] = set(setting["move"])
             if setting.get("weapon", None):
                 self.options["weapon"] = set(setting["weapon"])
+            if setting.get("version", None):
+                self.options["version"] = set(setting["version"])
         self.updateButtons()
         self.updateCharas()
 
@@ -96,6 +103,7 @@ class charaPanel(object):
         elif self.buttonList[index]["relief"] == RAISED:
             self.options[tags[0]].add(tags[1])
             self.buttonList[index]["relief"] = SUNKEN
+        # print(self.options)
         self.updateCharas()
     
     def updateButtons(self):
@@ -114,6 +122,11 @@ class charaPanel(object):
                 self.buttonList[i+len(COLORS)+len(MOVES)]["relief"] = SUNKEN
             else:
                 self.buttonList[i+len(COLORS)+len(MOVES)]["relief"] = RAISED
+        for i, version in enumerate(VERSIONS):
+            if version in self.options["version"]:
+                self.buttonList[i+len(COLORS)+len(MOVES)+len(WEAPONS)]["relief"] = SUNKEN
+            else:
+                self.buttonList[i+len(COLORS)+len(MOVES)+len(WEAPONS)]["relief"] = RAISED
     
     def filtering(self):
         charas = []
@@ -127,6 +140,11 @@ class charaPanel(object):
                     flag = False
             if len(self.options['weapon']) > 0:
                 if hero["weapontype"] not in self.options['weapon'] and hero["color"]+hero["weapontype"] not in self.options['weapon']:
+                    flag = False
+            if len(self.options['version']) > 0:
+                if hero["version"] == "":
+                    flag = False
+                elif int(hero["version"].split(',')[0]) not in self.options['version']:
                     flag = False
             if flag:
                 charas.append(hero)
