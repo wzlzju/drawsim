@@ -1,6 +1,7 @@
 import random, math, copy
 
-from fehdata import data
+# from fehdata import data
+from tmpdata import data
 
 class gacha(object):
     def __init__(self, 

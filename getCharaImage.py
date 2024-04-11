@@ -5,7 +5,8 @@ from fake_useragent import UserAgent
 from PIL import Image
 import io
 
-from fehdata import data
+# from fehdata import data
+from tmpdata import data
 
 headers = {"User-Agent": UserAgent().random}
 def url(name):
@@ -26,7 +27,22 @@ def crawl():
         except:
             print("ERROR", name)
 
+def update():
+    url = "http://www.arcticsilverfox.com/score_calc/"
+    data = requests.get(url=url,headers=headers).content.decode("utf-8")
+    data = data.split("<script>\n\t\tvar data = {};\n\t\t")[1].split("\t</script>")[0]
+    data = data.replace("data.heroes", 'data["heroes"]')
+    data = data.replace("data.skills", 'data["skills"]')
+    data = data.replace("data.prereqs", 'data["prereqs"]')
+    data = data.replace("data.heroSkills", 'data["heroSkills"]')
+    data = data.replace("data.prfSkills", 'data["prfSkills"]')
+    for _ in range(5):
+        data = data.replace("\t\t", '\n')
+        data = data.replace("}];\n", '}]\n\n')
+    with open("tmpdata.py", "w") as f:
+        f.write(data)
 
 
 if __name__ == "__main__":
+    # update()
     crawl()

@@ -1,8 +1,10 @@
 from tkinter import *
+from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import random, math, re, os, collections, copy
 
+from fehGachaSub import *
 import fehGacha as gacha
 try:
     from PIL import Image, ImageTk
@@ -10,14 +12,14 @@ try:
 except:
     NOPIL = True
 try:
-    from fehdata import data
+    # from fehdata import data
+    from tmpdata import data
     NODATA = False
 except:
     NODATA = True
 
-COLORS = ["red", "blue", "green", "gray"]
-MODES = ["normal", "special", "special 4*", "herofest", "double", "legendary", "weekly"]
-IMGPATH = "./img"
+from const import *
+from util import *
 
 
 class Application(Frame):
@@ -127,18 +129,26 @@ class Application(Frame):
                 label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
                 entry=Entry(upInput, textvariable=self.up[pup][color])
                 entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+                button=Button(upInput, text="...", command=lambda c=color,textVar=self.up[pup][color]:self.selectChara(c,textVar))
+                button.grid(row=0, column=2, padx=5, pady=5, sticky="w")
                 rowId += 1
         
         self.modeInput = Canvas(self.inputPanel, highlightthickness=0)
         self.modeInput.grid(row=1, column=0, padx=5, pady=5, sticky="w")
         label=Label(self.modeInput, text="Gacha type:")
         label.grid(row=0, column=0)
-        for i, mode in enumerate(MODES):
-            radio=Radiobutton(self.modeInput, text=mode, value=i, variable=self.mode)
-            radio.grid(row=i+1, column=0, padx=5, pady=5, sticky="w")
+        self.modeselectbox = ttk.Combobox(self.modeInput, values=MODES)
+        self.modeselectbox.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        self.modeselectbox.set(MODES[0])
+        self.modeselectbox.bind("<<ComboboxSelected>>", self.selectMode)
+        # for i, mode in enumerate(MODES):
+        #     radio=Radiobutton(self.modeInput, text=mode, value=i, variable=self.mode)
+        #     radio.grid(row=i+1, column=0, padx=5, pady=5, sticky="w")
         Checkbutton(self.inputPanel, highlightthickness=0, text="cheating mode", variable=self.cheatmode, onvalue=True, offvalue=False, 
             command=self.update_CHEAT).grid(row=2, column=0, padx=5, pady=5, sticky="w")
         Button(self.inputPanel, text='confirm',width=8,command=self.inputConfirm).grid(row=3, column=0, padx=5, pady=5)
+        
+        
 
         self.drawPanel = Canvas(self, highlightthickness=0)
         self.drawPanel.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
@@ -261,8 +271,23 @@ class Application(Frame):
             for i in self.statistics[rank]:
                 self.list34.insert(END, i)
     
+    def selectChara(self, color, textVar):
+        newWindow = Toplevel(self)
+        panel = charaPanel(newWindow, textVar)
+        panel.initialization(setting={"color": set([color])})
+        panel.updateResult()
+        panel.updateCharas()
+        # combobox = ttk.Combobox(newWindow, values=[c['name'] for c in data['heroes']])
+        # combobox.pack()
+        # combobox.bind("<<ComboboxSelected>>", lambda event,w=combobox:selectchara2(event,w))
+        # def selectchara2(event, w):
+        #     textVar.set(textVar.get()+','+w.get())
+
     def update_CHEAT(self):
         self.updateCheatingInfoonCanvas()
+    
+    def selectMode(self, event):
+        self.mode = MODES.index(self.modeselectbox.get())
 
     def parseUserInput(self, up=None, mode=None):
         if not up:
@@ -605,14 +630,7 @@ def safeeval(string, dict) :
             raise NameError(f'{name} not allowed : {reason}')
     return eval(code, dict)
 
-def addImgExt(path):
-    imgext = [".png", ".PNG", ".jpg", ".jpeg", ".JPG", ".bmp", ".BMP", ".webp"]
-    for ext in imgext:
-        imgpath = path + ext
-        if os.path.exists(imgpath):
-            break
-        imgpath = path + ".png"
-    return imgpath
+
 
 
 if __name__ == "__main__":
