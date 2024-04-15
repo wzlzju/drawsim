@@ -5,14 +5,14 @@ from fake_useragent import UserAgent
 from PIL import Image
 import io
 
-# from fehdata import data
-from tmpdata import data
-
 headers = {"User-Agent": UserAgent().random}
 def url(name):
     return "http://www.arcticsilverfox.com/feh_sim/heroes/%s.png" % name
 
 def crawl():
+    # from fehdata import data
+    from tmpdata import data
+
     for i, hero in enumerate(data["heroes"]):
         name = hero["name"]
         try:
@@ -39,10 +39,11 @@ def update():
     for _ in range(5):
         data = data.replace("\t\t", '\n')
         data = data.replace("}];\n", '}]\n\n')
+    data = 'null = None\nSPECIAL_4TO5_VER = 4.11\n\ndata = {}\ndata["special_4to5_version"] = SPECIAL_4TO5_VER\n\n'+data
     with open("tmpdata.py", "w") as f:
         f.write(data)
 
 
 if __name__ == "__main__":
-    # update()
+    update()
     crawl()
