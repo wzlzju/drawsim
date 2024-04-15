@@ -3,7 +3,7 @@ from tkinter import ttk
 from tkinter.constants import DISABLED, NORMAL, ACTIVE
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import random, math, re, os, collections, copy
+import random, math, re, os, collections, copy, functools
 
 import fehGacha as gacha
 from const import *
@@ -29,6 +29,7 @@ class charaPanel(object):
         self.resultVar = resultVar
 
     def initialization(self, setting=None):
+        # constants
         self.result = self.getresult(self.resultVar.get())
         self.options = {
             "color": set(),
@@ -36,97 +37,67 @@ class charaPanel(object):
             "weapon": set(),
             "version": set()
         }
+        self.buttonsize = (30,30)
+        self.w_num = len(COLORS)+len(MOVES)
 
+        # containers
+        self.filterButtonList = []
+        self.filterImgHolder = []
+        self.charaButtonList = []
+        self.charaImgHolder = []
+        self.resultButtonList = []
+        self.resultImgHolder = []
+
+        # widgets
         self.results = Canvas(self.root, bg="white", highlightthickness=0)
         self.results.grid(row=0, column=0, rowspan=2, columnspan=4, padx=5, pady=5, sticky="nsew")
         
-        self.buttonList = []
-        self.buttonImgHolder = []
-        self.buttons = Canvas(self.root, bg="white", highlightthickness=0)
-        self.buttons.grid(row=2, column=0, rowspan=5, columnspan=4, padx=5, pady=5, sticky="nsew")
-        self.w_num = len(COLORS)+len(MOVES)
-        for i, color in enumerate(COLORS):
-            self.getimage(self.buttonImgHolder, "util/"+color, (30, 30))
-            tags = ("color", color)
-            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
-            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-            self.buttonList.append(button)
-        for i, move in enumerate(MOVES):
-            self.getimage(self.buttonImgHolder, "util/"+move, (30, 30))
-            tags = ("move", move)
-            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
-            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-            self.buttonList.append(button)
-        for i, weapon in enumerate(WEAPONS):
-            self.getimage(self.buttonImgHolder, "util/"+weapon, (30, 30))
-            tags = ("weapon", weapon)
-            button = Button(self.buttons, image=self.buttonImgHolder[-1], command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
-            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-            self.buttonList.append(button)
-        for i, version in enumerate(VERSIONS):
-            tags = ("version", version)
-            button = Button(self.buttons, text=str(version), command=lambda i=len(self.buttonList),t=tags: self.buttonFunc(i,t))
-            button.grid(row=len(self.buttonList)//self.w_num, column=len(self.buttonList)%self.w_num, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-            self.buttonList.append(button)
+        self.filters = Canvas(self.root, bg="white", highlightthickness=0)
+        self.filters.grid(row=2, column=0, rowspan=5, columnspan=4, padx=5, pady=5, sticky="nsew")
+        buttonArray(self.filters, OPTIONS["color"], self.filterFunc, imageFunc=lambda i,e: "util/"+e, imgholder=self.filterImgHolder,
+                    tag="color", buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
+        buttonArray(self.filters, OPTIONS["move"], self.filterFunc, imageFunc=lambda i,e: "util/"+e, imgholder=self.filterImgHolder,
+                    tag="move", begin_index=len(self.filterButtonList), buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
+        buttonArray(self.filters, OPTIONS["weapon"], self.filterFunc, imageFunc=lambda i,e: "util/"+e, imgholder=self.filterImgHolder,
+                    tag="weapon", begin_index=len(self.filterButtonList), buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
+        buttonArray(self.filters, OPTIONS["version"], self.filterFunc, textFunc=lambda i,e: str(e),
+                    tag="version", begin_index=len(self.filterButtonList), buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
 
         self.charas = Canvas(self.root, bg="white", highlightthickness=0)
         self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
 
+        # settings
         if setting:
-            if setting.get("color", None):
-                self.options["color"] = set(setting["color"])
-            if setting.get("move", None):
-                self.options["move"] = set(setting["move"])
-            if setting.get("weapon", None):
-                self.options["weapon"] = set(setting["weapon"])
-            if setting.get("version", None):
-                self.options["version"] = set(setting["version"])
-        self.updateButtons()
+            for option_type in OPTIONS:
+                if setting.get(option_type, None):
+                    self.options[option_type] = set(setting[option_type])
+        self.updateFilters()
         self.updateCharas()
-
-    def getimage(self, holders, label, size=(60, 60)):
-        imgpath = os.path.join(IMGPATH, label)
-        imgpath = addImgExt(imgpath)
-        img = Image.open(imgpath)
-        img = img.resize(size)
-        holders.append(ImageTk.PhotoImage(img))
     
     def getresult(self, resstr):
         if len(resstr) == 0:
             return []
         return resstr.split(',')
     
-    def buttonFunc(self, index, tags):
-        if self.buttonList[index]["relief"] == SUNKEN:
-            self.options[tags[0]].remove(tags[1])
-            self.buttonList[index]["relief"] = RAISED
-        elif self.buttonList[index]["relief"] == RAISED:
-            self.options[tags[0]].add(tags[1])
-            self.buttonList[index]["relief"] = SUNKEN
+    def filterFunc(self, tag, index, element, **kwargs):
+        if self.filterButtonList[index]["relief"] == SUNKEN:
+            self.options[tag].remove(element)
+            self.filterButtonList[index]["relief"] = RAISED
+        elif self.filterButtonList[index]["relief"] == RAISED:
+            self.options[tag].add(element)
+            self.filterButtonList[index]["relief"] = SUNKEN
         # print(self.options)
         self.updateCharas()
     
-    def updateButtons(self):
-        for i, color in enumerate(COLORS):
-            if color in self.options["color"]:
-                self.buttonList[i]["relief"] = SUNKEN
+    def updateFilters(self):
+        optionNames = functools.reduce(lambda a,b: a+b, OPTIONS.values())
+        name2type = dict(zip(functools.reduce(lambda a,b:a+b,OPTIONS.values()), 
+                            functools.reduce(lambda a,b:a+b,[[_ for __ in range(len(OPTIONS[_]))] for _ in OPTIONS])))
+        for optionName, filterButton in zip(optionNames, self.filterButtonList):
+            if optionName in self.options[name2type[optionName]]:
+                filterButton["relief"] = SUNKEN
             else:
-                self.buttonList[i]["relief"] = RAISED
-        for i, move in enumerate(MOVES):
-            if move in self.options["move"]:
-                self.buttonList[i+len(COLORS)]["relief"] = SUNKEN
-            else:
-                self.buttonList[i+len(COLORS)]["relief"] = RAISED
-        for i, weapon in enumerate(WEAPONS):
-            if weapon in self.options["weapon"]:
-                self.buttonList[i+len(COLORS)+len(MOVES)]["relief"] = SUNKEN
-            else:
-                self.buttonList[i+len(COLORS)+len(MOVES)]["relief"] = RAISED
-        for i, version in enumerate(VERSIONS):
-            if version in self.options["version"]:
-                self.buttonList[i+len(COLORS)+len(MOVES)+len(WEAPONS)]["relief"] = SUNKEN
-            else:
-                self.buttonList[i+len(COLORS)+len(MOVES)+len(WEAPONS)]["relief"] = RAISED
+                filterButton["relief"] = RAISED
     
     def filtering(self):
         charas = []
@@ -152,31 +123,60 @@ class charaPanel(object):
 
     def updateCharas(self):
         charas = self.filtering()
-        self.charaImgHolder = []
-        for i, chara in enumerate(charas):
-            self.getimage(self.charaImgHolder, "chara/"+chara["name"], (30, 30))
-            tags = ("chara", chara["name"])
-            button = Button(self.charas, image=self.charaImgHolder[-1], command=lambda i=i,t=tags: self.charaFunc(i,t))
-            button.grid(row=i//(len(COLORS)+len(MOVES)), column=i%(len(COLORS)+len(MOVES)), rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-            # self.buttonList.append(button)
+        for b in self.charaButtonList:
+            b.grid_forget()
+        self.charaButtonList.clear()
+        self.charaImgHolder.clear()
+        buttonArray(self.charas, charas, self.charaFunc, imageFunc=lambda i,e: "chara/"+e["name"], imgholder=self.charaImgHolder,
+                    tag="chara", buttonList=self.charaButtonList, size=self.buttonsize, rownum=self.w_num)
     
-    def charaFunc(self, index, tags):
-        self.result.append(tags[1])
+    def charaFunc(self, tag, index, element, **kwargs):
+        self.result.append(element["name"])
         self.resultVar.set(','.join(self.result))
         self.updateResult()
 
     def updateResult(self):
-        self.resultImgHolder = []
-        for i, res in enumerate(self.result):
-            self.getimage(self.resultImgHolder, "chara/"+res, (30, 30))
-            tags = ("chara", res)
-            button = Button(self.results, image=self.resultImgHolder[-1], command=lambda i=i,t=tags: self.resultFunc(i,t))
-            button.grid(row=i//(len(COLORS)+len(MOVES)), column=i%(len(COLORS)+len(MOVES)), rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-            # self.buttonList.append(button)
+        for b in self.resultButtonList:
+            b.grid_forget()
+        self.resultButtonList.clear()
+        self.resultImgHolder.clear()
+        buttonArray(self.results, self.result, self.resultFunc, imageFunc=lambda i,e: "chara/"+e, imgholder=self.resultImgHolder,
+                    tag="chara", buttonList=self.resultButtonList, size=self.buttonsize, rownum=self.w_num)
     
-    def resultFunc(self, index, tags):
+    def resultFunc(self, tag, index, element, **kwargs):
         del self.result[index]
         self.resultVar.set(','.join(self.result))
         self.updateResult()
 
-        
+def getimage(holders, label, size=(60, 60)):
+        imgpath = os.path.join(IMGPATH, label)
+        imgpath = addImgExt(imgpath)
+        img = Image.open(imgpath)
+        img = img.resize(size)
+        holders.append(ImageTk.PhotoImage(img))
+
+def buttonArray(root, elements, callbackFunc, textFunc=None, imageFunc=None, imgholder=None, tag="", begin_index=0, buttonList=None, size=(60,60), rownum=8):
+    for ii, e in enumerate(elements):
+        i = ii+begin_index
+        if textFunc:
+            text = textFunc(i, e)
+            button = buttonEntry(root, tag, i, e, callbackFunc, text=text, size=size, rownum=rownum)
+        elif imageFunc:
+            image = imageFunc(i, e)
+            button = buttonEntry(root, tag, i, e, callbackFunc, image=image, imgholder=imgholder, size=size, rownum=rownum)
+        if buttonList is not None:
+            buttonList.append(button)
+
+def buttonEntry(root, tag, index, element, callbackFunc, text=None, image=None, imgholder=None, size=(60,60), rownum=8):
+    if not text and not image:
+        print("Error: No text and no image given in buttonEntry of", root)
+    if text:
+        button = Button(root, text=text, command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
+    elif image:
+        getimage(imgholder, image, size)
+        button = Button(root, image=imgholder[-1], command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
+    button.grid(row=index//rownum, column=index%rownum, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
+    return button
+
+
+

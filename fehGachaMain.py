@@ -277,11 +277,6 @@ class Application(Frame):
         panel.initialization(setting={"color": set([color])})
         panel.updateResult()
         panel.updateCharas()
-        # combobox = ttk.Combobox(newWindow, values=[c['name'] for c in data['heroes']])
-        # combobox.pack()
-        # combobox.bind("<<ComboboxSelected>>", lambda event,w=combobox:selectchara2(event,w))
-        # def selectchara2(event, w):
-        #     textVar.set(textVar.get()+','+w.get())
 
     def update_CHEAT(self):
         self.updateCheatingInfoonCanvas()
