@@ -31,14 +31,13 @@ class charaPanel(object):
     def initialization(self, setting=None):
         # constants
         self.result = self.getresult(self.resultVar.get())
-        self.options = {
-            "color": set(),
-            "move": set(),
-            "weapon": set(),
-            "version": set()
-        }
+        self.options = {_:set() for _ in OPTIONS}
         self.buttonsize = (30,30)
         self.w_num = len(COLORS)+len(MOVES)
+        self.smallButtonConfigs = {
+            "size": self.buttonsize,
+            "rownum": self.w_num
+        }
 
         # containers
         self.filterButtonList = []
@@ -48,20 +47,21 @@ class charaPanel(object):
         self.resultButtonList = []
         self.resultImgHolder = []
 
+        # configs
+        filterConfig = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.filterFunc, "buttonList": self.filterButtonList})
+        imgFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/"+e, "imgholder": self.filterImgHolder})
+        textFilterConfig = dict_merge(filterConfig, {"textFunc": lambda i,e: str(e)})
+
         # widgets
         self.results = Canvas(self.root, bg="white", highlightthickness=0)
         self.results.grid(row=0, column=0, rowspan=2, columnspan=4, padx=5, pady=5, sticky="nsew")
         
         self.filters = Canvas(self.root, bg="white", highlightthickness=0)
         self.filters.grid(row=2, column=0, rowspan=5, columnspan=4, padx=5, pady=5, sticky="nsew")
-        buttonArray(self.filters, OPTIONS["color"], self.filterFunc, imageFunc=lambda i,e: "util/"+e, imgholder=self.filterImgHolder,
-                    tag="color", buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
-        buttonArray(self.filters, OPTIONS["move"], self.filterFunc, imageFunc=lambda i,e: "util/"+e, imgholder=self.filterImgHolder,
-                    tag="move", begin_index=len(self.filterButtonList), buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
-        buttonArray(self.filters, OPTIONS["weapon"], self.filterFunc, imageFunc=lambda i,e: "util/"+e, imgholder=self.filterImgHolder,
-                    tag="weapon", begin_index=len(self.filterButtonList), buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
-        buttonArray(self.filters, OPTIONS["version"], self.filterFunc, textFunc=lambda i,e: str(e),
-                    tag="version", begin_index=len(self.filterButtonList), buttonList=self.filterButtonList, size=self.buttonsize, rownum=self.w_num)
+        buttonArray(root=self.filters, elements=OPTIONS["color"], tag="color", **imgFilterConfig)
+        buttonArray(root=self.filters, elements=OPTIONS["move"], tag="move", begin_index=len(self.filterButtonList), **imgFilterConfig)
+        buttonArray(root=self.filters, elements=OPTIONS["weapon"], tag="weapon", begin_index=len(self.filterButtonList), **imgFilterConfig)
+        buttonArray(root=self.filters, elements=OPTIONS["version"], tag="version", begin_index=len(self.filterButtonList), **textFilterConfig)
 
         self.charas = Canvas(self.root, bg="white", highlightthickness=0)
         self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
@@ -75,9 +75,7 @@ class charaPanel(object):
         self.updateCharas()
     
     def getresult(self, resstr):
-        if len(resstr) == 0:
-            return []
-        return resstr.split(',')
+        return resstr.split(',') if len(resstr)>0 else []
     
     def filterFunc(self, tag, index, element, **kwargs):
         if self.filterButtonList[index]["relief"] == SUNKEN:
@@ -127,8 +125,9 @@ class charaPanel(object):
             b.grid_forget()
         self.charaButtonList.clear()
         self.charaImgHolder.clear()
-        buttonArray(self.charas, charas, self.charaFunc, imageFunc=lambda i,e: "chara/"+e["name"], imgholder=self.charaImgHolder,
-                    tag="chara", buttonList=self.charaButtonList, size=self.buttonsize, rownum=self.w_num)
+        config = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.charaFunc, "buttonList": self.charaButtonList, 
+                                                        "imageFunc": lambda i,e: "chara/"+e["name"], "imgholder": self.charaImgHolder})
+        buttonArray(root=self.charas, elements=charas, tag="chara", **config)
     
     def charaFunc(self, tag, index, element, **kwargs):
         self.result.append(element["name"])
@@ -140,8 +139,9 @@ class charaPanel(object):
             b.grid_forget()
         self.resultButtonList.clear()
         self.resultImgHolder.clear()
-        buttonArray(self.results, self.result, self.resultFunc, imageFunc=lambda i,e: "chara/"+e, imgholder=self.resultImgHolder,
-                    tag="chara", buttonList=self.resultButtonList, size=self.buttonsize, rownum=self.w_num)
+        config = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.resultFunc, "buttonList": self.resultButtonList, 
+                                                        "imageFunc": lambda i,e: "chara/"+e, "imgholder": self.resultImgHolder})
+        buttonArray(root=self.results, elements=self.result, tag="chara", **config)
     
     def resultFunc(self, tag, index, element, **kwargs):
         del self.result[index]
@@ -155,28 +155,63 @@ def getimage(holders, label, size=(60, 60)):
         img = img.resize(size)
         holders.append(ImageTk.PhotoImage(img))
 
-def buttonArray(root, elements, callbackFunc, textFunc=None, imageFunc=None, imgholder=None, tag="", begin_index=0, buttonList=None, size=(60,60), rownum=8):
+def buttonArray(elements=None, textFunc=None, imageFunc=None, begin_index=0, buttonList=None, **kwargs):
+    if not elements:
+        return
+    if textFunc is None and imageFunc is None:
+        print("Error: No text and no image Func given in buttonArray of", elements)
+    if NOPIL and textFunc is None:
+        textFunc = lambda i,e: str(e)
     for ii, e in enumerate(elements):
         i = ii+begin_index
-        if textFunc:
+        if textFunc is not None:
             text = textFunc(i, e)
-            button = buttonEntry(root, tag, i, e, callbackFunc, text=text, size=size, rownum=rownum)
-        elif imageFunc:
+            button = buttonEntry(index=i, element=e, text=text, **kwargs)
+        elif imageFunc is not None:
             image = imageFunc(i, e)
-            button = buttonEntry(root, tag, i, e, callbackFunc, image=image, imgholder=imgholder, size=size, rownum=rownum)
+            button = buttonEntry(index=i, element=e, image=image, **kwargs)
         if buttonList is not None:
             buttonList.append(button)
 
-def buttonEntry(root, tag, index, element, callbackFunc, text=None, image=None, imgholder=None, size=(60,60), rownum=8):
-    if not text and not image:
-        print("Error: No text and no image given in buttonEntry of", root)
-    if text:
+def buttonEntry(root=None, tag="", index=0, element=None, callbackFunc=None, text=None, image=None, imgholder=None, size=(60,60), rownum=8, **kwargs):
+    if root is None or element is None or callbackFunc is None:
+        print("Error: No text and no image given in buttonEntry of", root, element, "False calling.")
+    if text is None and image is None:
+        print("Error: No text and no image given in buttonEntry of", root, element)
+    if NOPIL and text is None:
+        text = str(image)
+    if text is not None:
         button = Button(root, text=text, command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
-    elif image:
+    elif image is not None:
         getimage(imgholder, image, size)
         button = Button(root, image=imgholder[-1], command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
     button.grid(row=index//rownum, column=index%rownum, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
     return button
+
+# def buttonArray(root, elements, callbackFunc, textFunc=None, imageFunc=None, imgholder=None, tag="", begin_index=0, buttonList=None, size=(60,60), rownum=8):
+#     for ii, e in enumerate(elements):
+#         i = ii+begin_index
+#         if textFunc is not None:
+#             text = textFunc(i, e)
+#             button = buttonEntry(root, tag, i, e, callbackFunc, text=text, size=size, rownum=rownum)
+#         elif imageFunc is not None:
+#             image = imageFunc(i, e)
+#             button = buttonEntry(root, tag, i, e, callbackFunc, image=image, imgholder=imgholder, size=size, rownum=rownum)
+#         if buttonList is not None:
+#             buttonList.append(button)
+
+# def buttonEntry(root, tag, index, element, callbackFunc, text=None, image=None, imgholder=None, size=(60,60), rownum=8):
+#     if text is None and image is None:
+#         print("Error: No text and no image given in buttonEntry of", root)
+#     if NOPIL and text is None:
+#         text = str(image)
+#     if text is not None:
+#         button = Button(root, text=text, command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
+#     elif image is not None:
+#         getimage(imgholder, image, size)
+#         button = Button(root, image=imgholder[-1], command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
+#     button.grid(row=index//rownum, column=index%rownum, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
+#     return button
 
 
 
