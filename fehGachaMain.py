@@ -2,7 +2,8 @@ from tkinter import *
 from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import random, math, re, os, collections, copy
+import random, math, re, os, collections, copy, time
+import threading
 
 from fehGachaSub import *
 import fehGacha as gacha
@@ -106,13 +107,16 @@ class Application(Frame):
                                     mode=self.mode
                                 ),
                                 strategy=self.simu_selectStrategy if not self.cheatmode.get() else self.simu_selectStrategyCheat,
-                                terminate=self.simu_stopStrategy
+                                terminate=self.simu_stopStrategy,
+                                app = self
                             )
         
         self.ballImgHolder = [None]*5
         self.charaImgHolder = [None]*5
         self.charaBgHolder = [None]*5
         self.charaBorderHolder = [None]*5
+
+        self.is_simulating = False
     
     def createWidget(self):
         self.inputPanel = Canvas(self, highlightthickness=0)
@@ -205,7 +209,8 @@ class Application(Frame):
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.simuNumInput, textvariable=self.simu_num).grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        Button(self.simuPanel, text='simulate',width=20,command=self.simu).grid(row=8,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        self.simuButton = Button(self.simuPanel, text='simulate',width=20,command=self.simu)
+        self.simuButton.grid(row=8,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         self.simuplotswitchbuttons = Canvas(self.simuPanel, highlightthickness=0)
         self.simuplotswitchbuttons.grid(row=9, column=0, rowspan=1,columnspan=4, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='histogram',width=12,command=self.draw_simu_hist).grid(row=0,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
@@ -523,16 +528,47 @@ class Application(Frame):
         
         self.simuStopFunc = safecompile(exp)
     
+    class simu_thread(threading.Thread):
+        def __init__(self, name, app, cheatmode):
+            threading.Thread.__init__(self)
+            self.name = name
+            self.app = app
+            self.cheatmode = cheatmode
+        def run(self):
+            self.app.simuSTOP = False
+            self.app.compile_simuStopFunc()
+            if self.cheatmode:
+                self.app.simulationObj.strategy = self.app.simu_selectStrategyCheat
+                self.app.simu_orbres = self.app.simulationObj.simu_withInfo(int(self.app.simu_num.get()))
+            else:
+                self.app.simulationObj.strategy = self.app.simu_selectStrategy
+                self.app.simu_orbres = self.app.simulationObj.simu(int(self.app.simu_num.get()))
+    
+    class simu_result_update(threading.Thread):
+        def __init__(self, simu, app):
+            threading.Thread.__init__(self)
+            self.simu = simu
+            self.app = app
+        def run(self):
+            while self.simu.is_alive():
+                time.sleep(0.1)
+            self.app.draw_simu_hist()
+            self.app.print_statistics()
+            self.app.simuButton.config(text="simulate")
+            self.app.is_simulating = False
+
     def simu(self):
-        self.compile_simuStopFunc()
-        if self.cheatmode.get():
-            self.simulationObj.strategy = self.simu_selectStrategyCheat
-            self.simu_orbres = self.simulationObj.simu_withInfo(int(self.simu_num.get()))
+        if not self.is_simulating:
+            self.is_simulating = True
+            self.simuButton.config(text="terminate")
+            self.simurunning = self.simu_thread("1", self, self.cheatmode.get())
+            self.simuupdating = self.simu_result_update(self.simurunning, self)
+            self.simurunning.start()
+            self.simuupdating.start()
         else:
-            self.simulationObj.strategy = self.simu_selectStrategy
-            self.simu_orbres = self.simulationObj.simu(int(self.simu_num.get()))
-        self.draw_simu_hist()
-        self.print_statistics()
+            self.simuSTOP = True
+            # self.simuButton.config(text="simulate")
+            # self.is_simulating = False
     
     def draw_simu_hist(self, bins=20):
         if not self.simu_orbres:
@@ -568,6 +604,8 @@ class Application(Frame):
         self.simu_plot_toolbar.update()
     
     def print_statistics(self):
+        if not self.simu_orbres:
+            return
         mean = lambda a:sum(a)/len(a)
         miu = mean(self.simu_orbres)
         sigma = (mean([(i-miu)**2 for i in self.simu_orbres]))**0.5

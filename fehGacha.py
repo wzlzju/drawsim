@@ -155,14 +155,17 @@ class drawing(object):
 
 
 class drawsimulation(object):
-    def __init__(self, gacha, strategy, terminate):
+    def __init__(self, gacha, strategy, terminate, app=None):
         self.gacha = gacha
         self.strategy = strategy
         self.terminate = terminate
+        self.app = app
 
     def simu(self, N=10000):
         orbres = []
         for i in range(N):
+            if self.app is not None and self.app.simuSTOP is True:
+                break
             self.gacha.clear()
             orbs = 0
             collection = {}
@@ -180,7 +183,11 @@ class drawsimulation(object):
                         collection[c] = 1
                 if self.terminate(collection):
                     break
-            orbres.append(orbs)
+                if self.app is not None and self.app.simuSTOP is True:
+                    break
+            if self.app is None or self.app.simuSTOP is False:
+                orbres.append(orbs)
+        # print(orbres)
         return orbres
     
     def simu_withInfo(self, N=10000):
