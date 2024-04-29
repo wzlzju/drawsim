@@ -106,8 +106,8 @@ class Application(Frame):
                                     charas=charas,
                                     mode=self.mode
                                 ),
-                                strategy=self.simu_selectStrategy if not self.cheatmode.get() else self.simu_selectStrategyCheat,
-                                terminate=self.simu_stopStrategy,
+                                strategy=self.simu_parseStrategy if not self.cheatmode.get() else self.simu_parseStrategyCheat,
+                                terminate=self.simu_parseStop,
                                 app = self
                             )
         
@@ -196,6 +196,8 @@ class Application(Frame):
         label=Label(self.strategyInput, text="Drawing strategy: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.strategyInput, textvariable=self.strategyStr).grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        Button(self.strategyInput, text="...", 
+                command=lambda textVar=self.strategyStr:self.selectStrategy(textVar)).grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
         self.stopInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
         self.stopInput.grid(row=6,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
@@ -423,7 +425,14 @@ class Application(Frame):
         self.updateStatistics()
         # print(self.gacha.cprobs, self.gacha.count, self.gacha.lantern)
     
-    def simu_selectStrategy(self, colorList):
+    def selectStrategy(self, textVar):
+        newWindow = Toplevel(self)
+        panel = strategyPanel(newWindow, textVar)
+        panel.initialization()
+        # panel.updateResult()
+        # panel.updateCharas()
+
+    def simu_parseStrategy(self, colorList):
         strategyStr = self.strategyStr.get()
         wanted = []
         unwanted = []
@@ -443,7 +452,7 @@ class Application(Frame):
                     break
         return ret
     
-    def simu_selectStrategyCheat(self, round):
+    def simu_parseStrategyCheat(self, round):
         strategyStr = self.strategyStr.get()
         rankList = [ch['rank'] for ch in round]
         wanted = []
@@ -463,7 +472,7 @@ class Application(Frame):
                     break
         return ret
 
-    def simu_stopStrategy(self, collection):
+    def simu_parseStop(self, collection):
         return eval(self.simuStopFunc, {'collection': collection})
     
     def compile_simuStopFunc(self):
@@ -538,10 +547,10 @@ class Application(Frame):
             self.app.simuSTOP = False
             self.app.compile_simuStopFunc()
             if self.cheatmode:
-                self.app.simulationObj.strategy = self.app.simu_selectStrategyCheat
+                self.app.simulationObj.strategy = self.app.simu_parseStrategyCheat
                 self.app.simu_orbres = self.app.simulationObj.simu_withInfo(int(self.app.simu_num.get()))
             else:
-                self.app.simulationObj.strategy = self.app.simu_selectStrategy
+                self.app.simulationObj.strategy = self.app.simu_parseStrategy
                 self.app.simu_orbres = self.app.simulationObj.simu(int(self.app.simu_num.get()))
     
     class simu_result_update(threading.Thread):
