@@ -66,7 +66,7 @@ class Application(Frame):
 
         self.strategyStr = StringVar(self, "Wbgr")
         self.stopStr = StringVar(self, "Corrin(F) (Brave) 9")
-        self.stopStr = StringVar(self, "[all gray 11] or (Corrin(F) (Brave) >= 10 and Corrin(F) (Brave) >= 11 or Corrin(F) (Brave) >= 9)")
+        # self.stopStr = StringVar(self, "[all gray 11] or (Corrin(F) (Brave) >= 10 and Corrin(F) (Brave) >= 11 or Corrin(F) (Brave) >= 9)")
         self.simu_num = StringVar(self, "10000")
         self.hist_bins = StringVar(self, "20")
 

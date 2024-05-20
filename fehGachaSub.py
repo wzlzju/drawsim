@@ -358,11 +358,12 @@ def drawTree(root, tree, crow, cdepth, callback, index):
     LogExp_RowWidget(root, tree, crow, cdepth, callback, index)
     drawnrownum = 1
 
-    op = tree["op"]
-    obj = tree["obj"]
-    if op in LOGICOPS:
-        for i, node in enumerate(obj):
-            drawnrownum += drawTree(root, node, crow+drawnrownum, cdepth+1, callback=callback, index=index+[i])
+    if type(tree) is not str and type(tree) is not int:
+        op = tree["op"]
+        obj = tree["obj"]
+        if op in LOGICOPS:
+            for i, node in enumerate(obj):
+                drawnrownum += drawTree(root, node, crow+drawnrownum, cdepth+1, callback=callback, index=index+[i])
     return drawnrownum
         
 
@@ -372,9 +373,9 @@ def LogExp_RowWidget(root, node, rownum, depth, callback, nodeindex):
 
     # indent
     Label(row, text="    "*depth).grid(row=0, column=0, rowspan=1, columnspan=1, sticky="w")
-    if type(node) is str:
+    if type(node) is str or type(node) is int:
         # True
-        Label(row, text=node).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="w")
+        Label(row, text=str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="w")
         # -
         createTextButton(row, "-", 0, 2, callback=callback, action="remove_this", nodeindex=nodeindex)
         return
