@@ -40,7 +40,7 @@ def densitycurve(x=None, samples=None):
     counter = collections.Counter(samples)
     return [counter[i]/num for i in x]
 
-def masscurve(x=None, samples=None, PDF=None):
+def distributioncurve(x=None, samples=None, PDF=None):
     if not samples:
         return
     if not x:
@@ -55,7 +55,7 @@ def drawprobabilitycurve(draws):
     plt.plot(x, y)
     plt.show()
 
-    y = masscurve(x, draws, PDF=y)
+    y = distributioncurve(x, draws, PDF=y)
     plt.plot(x, y)
     plt.show()
 

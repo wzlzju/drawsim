@@ -48,6 +48,7 @@ class Application(Frame):
             }
         }
         self.cheatmode = BooleanVar(self, False)
+        self.fullexpmode = BooleanVar(self, FULLSTOPFUNC)
         
         self.ballParas = {
             "cx": 150,
@@ -65,22 +66,48 @@ class Application(Frame):
 
         self.strategyStr = StringVar(self, "Wbgr")
         self.stopStr = StringVar(self, "Corrin(F) (Brave) 9")
+        self.stopStr = StringVar(self, "[all gray 11] or (Corrin(F) (Brave) >= 10 and Corrin(F) (Brave) >= 11 or Corrin(F) (Brave) >= 9)")
         self.simu_num = StringVar(self, "10000")
         self.hist_bins = StringVar(self, "20")
+
+        if NODATA:
+            self.data = {"heroes":[]}
+        else:
+            self.data = copy.deepcopy(data)
+        self.processData(self.data)
 
         self.initialize()
         self.createWidget()
         self.inputConfirm()
 
+    def processData(self, data):
+        data['id2hero'] = {hero['hero_id']:hero for hero in data["heroes"]}
+        data['name2hero'] = {hero['name']:hero for hero in data["heroes"]}
+        data['hero_ids'] = set([hero['hero_id'] for hero in data["heroes"]])
+        data['names'] = set([hero['name'] for hero in data["heroes"]])
+
     def initialize(self):
         probs, charas = self.parseUserInput(self.up, self.mode)
-        if NODATA:
-            self.tmpdata = {"heroes": []}
-        else:
-            self.tmpdata = {
-                "heroes": [chara for chara in charas['5u'] if chara['name'] not in set([hero['name'] for hero in data["heroes"]])] + \
-                            [chara for chara in charas['4u'] if chara['name'] not in set([hero['name'] for hero in data["heroes"]])]
-            }
+        self.tmpdata = {'heroes':[]}
+        self.tmpdata['heroes'] = [{
+                                    'hero_id':-(idx+1), 
+                                    'name':chara['name'], 
+                                    'color':chara['color'], 
+                                    'minrarity':5
+                                } for idx, chara in enumerate(charas['5u']) if chara['name'] not in self.data['names']]
+        for idx, chara in enumerate(charas['4u']):
+            if chara['name'] in self.data['names']:
+                continue
+            if chara['name'] not in set([c['name'] for c in self.tmpdata['heroes']]):
+                self.tmpdata['heroes'].append({
+                                                'hero_id':-(idx+1+len(charas['5u'])), 
+                                                'name':chara['name'], 
+                                                'color':chara['color'],
+                                                'minrarity': 4
+                                            })
+            else:
+                self.tmpdata['heroes'][[c['name'] for c in self.tmpdata['heroes']].index(chara['name'])]['minrarity'] = 4
+        self.processData(self.tmpdata)
 
         self.gacha = gacha.gacha(probs=probs,
                             charas=charas,
@@ -99,7 +126,6 @@ class Application(Frame):
         self.round = self.gacha.rollARound()
         self.colorList = [c['color'] for c in self.round]
 
-        
         self.simulationObj = gacha.drawsimulation(
                                 gacha=gacha.gacha(
                                     probs=probs,
@@ -110,6 +136,7 @@ class Application(Frame):
                                 terminate=self.simu_parseStop,
                                 app = self
                             )
+        self.parser = stopParser()
         
         self.ballImgHolder = [None]*5
         self.charaImgHolder = [None]*5
@@ -204,6 +231,10 @@ class Application(Frame):
         label=Label(self.stopInput, text="Stop when: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.stopInput, textvariable=self.stopStr).grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        Button(self.stopInput, text="...", 
+                command=lambda textVar=self.stopStr:self.selectStop(textVar)).grid(row=0, column=2, padx=5, pady=5, sticky="w")
+        Checkbutton(self.stopInput, highlightthickness=0, text="full exp", variable=self.fullexpmode, onvalue=True, offvalue=False
+            ).grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
         self.simuNumInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
         self.simuNumInput.grid(row=7,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
@@ -217,7 +248,7 @@ class Application(Frame):
         self.simuplotswitchbuttons.grid(row=9, column=0, rowspan=1,columnspan=4, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='histogram',width=12,command=self.draw_simu_hist).grid(row=0,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='density curve',width=12,command=self.draw_simu_density).grid(row=0,column=1,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
-        Button(self.simuplotswitchbuttons, text='mass curve',width=12,command=self.draw_simu_mass).grid(row=0,column=2,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
+        Button(self.simuplotswitchbuttons, text='cumulative distribution',width=20,command=self.draw_simu_distribution).grid(row=0,column=2,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         self.binsInput = Canvas(self.simuPanel, highlightthickness=0)
         self.binsInput.grid(row=10, column=0, padx=5, pady=5, sticky="nsew")
         label=Label(self.binsInput, text="bins:")
@@ -431,6 +462,13 @@ class Application(Frame):
         panel.initialization()
         # panel.updateResult()
         # panel.updateCharas()
+    
+    def selectStop(self, textVar):
+        newWindow = Toplevel(self)
+        panel = stopPanel(newWindow, textVar)
+        panel.initialization()
+        # panel.updateResult()
+        # panel.updateCharas()
 
     def simu_parseStrategy(self, colorList):
         strategyStr = self.strategyStr.get()
@@ -473,69 +511,24 @@ class Application(Frame):
         return ret
 
     def simu_parseStop(self, collection):
-        return eval(self.simuStopFunc, {'collection': collection})
+        if not self.fullexpmode:
+            return eval(self.compiled_simuStopFunc, {'collection': collection})
+        else:
+            return self.parser.eval(collection, exp_tree=self.stopExpTree)
     
     def compile_simuStopFunc(self):
         stopStr = self.stopStr.get()
-        if NODATA:
-            parse_or = stopStr.split(" or ")
-            for i, exp_or in enumerate(parse_or):
-                parse_and = exp_or.split(" and ")
-                for j, exp_and in enumerate(parse_and):
-                    exps = exp_and.split(" ")
-                    exp = ("collection.get('%s',0) >=" % (" ".join(exps[:-1])))+" "+exps[-1]
-                    parse_and[j] = exp
-                exp = " and ".join(parse_and)
-                parse_or[i] = exp
-            exp = " or ".join(parse_or)
+        if not self.fullexpmode:
+            exp = self.parser.translatePresetting(stopStr, self.parseUserInput()[1]['5u'])  # parse [ ]
+            self.debug_print(exp)
+            exp = self.parser.translateName(exp, self.data["heroes"]+self.tmpdata["heroes"])    # parse name
+            self.debug_print(exp)
+            self.compiled_simuStopFunc = safecompile(exp)
         else:
-            exp = ""
-            # parse < >
-            while True:
-                i = stopStr.find('<')
-                if i == -1:
-                    exp += stopStr
-                    break
-                exp += stopStr[:i]
-                stopStr = stopStr[i+1:]
-                j = stopStr.find('>')
-                if j == -1:
-                    j = len(stopStr)
-                tmp = stopStr[:j]
-                stopStr = stopStr[j+1:]
-                identifier = tmp.strip().split()[0].lower()
-                color = tmp.strip().split()[1].lower()
-                num = int(tmp.strip().split()[2])
-                ttmp = {'all':' and ','one':' or '}[identifier].join(["%s %d"%(c['name'],num) for c in self.parseUserInput()[1]['5u'] if c['color']==color])
-                if ttmp == "":
-                    ttmp = "True"
-                exp += "(%s)"%ttmp
+            exp = self.parser.translatePresetting(stopStr, self.parseUserInput()[1]['5u'])  # parse [ ]
             self.debug_print(exp)
-            # parse name
-            for hero in data["heroes"]+self.tmpdata["heroes"]:
-                name = hero["name"]
-                if name == 'a':
-                    ttt=1
-                pexp = copy.deepcopy(exp)
-                exp = ""
-                while True:
-                    i = pexp.find(name)
-                    if i == -1:
-                        exp += pexp
-                        break
-                    j = i+len(name)
-                    if pexp[j:].lstrip()[0:1].isnumeric() and (i==0 or pexp[i-1] in [' ','(']):
-                        exp += pexp[:i]
-                        exp += "collection.get('%s',0) >="%name
-                    else:
-                        k = pexp[j:].find(' ')
-                        if k != -1:
-                            j += k
-                        exp += pexp[:j]
-                    pexp = pexp[j:]
-            self.debug_print(exp)
-        
-        self.simuStopFunc = safecompile(exp)
+            self.stopExpTree = self.parser.parse(exp)
+            self.debug_print(self.stopExpTree)
     
     class simu_thread(threading.Thread):
         def __init__(self, name, app, cheatmode):
@@ -602,11 +595,11 @@ class Application(Frame):
         self.canvas_tk_agg.draw()
         self.simu_plot_toolbar.update()
     
-    def draw_simu_mass(self):
+    def draw_simu_distribution(self):
         if not self.simu_orbres:
             return
         x = list(range(0, max(self.simu_orbres)+1))
-        y = masscurve(x, self.simu_orbres)
+        y = distributioncurve(x, self.simu_orbres)
         self.plot.clear()
         self.plot.plot(x, y)
         self.canvas_tk_agg.draw()

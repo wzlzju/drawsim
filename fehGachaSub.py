@@ -299,30 +299,206 @@ def buttonEntry(root=None, tag="", index=0, element=None, callbackFunc=None, tex
     button.grid(row=index//rownum, column=index%rownum, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
     return button
 
-# def buttonArray(root, elements, callbackFunc, textFunc=None, imageFunc=None, imgholder=None, tag="", begin_index=0, buttonList=None, size=(60,60), rownum=8):
-#     for ii, e in enumerate(elements):
-#         i = ii+begin_index
-#         if textFunc is not None:
-#             text = textFunc(i, e)
-#             button = buttonEntry(root, tag, i, e, callbackFunc, text=text, size=size, rownum=rownum)
-#         elif imageFunc is not None:
-#             image = imageFunc(i, e)
-#             button = buttonEntry(root, tag, i, e, callbackFunc, image=image, imgholder=imgholder, size=size, rownum=rownum)
-#         if buttonList is not None:
-#             buttonList.append(button)
+class stopPanel(object):
+    def __init__(self, root, resultVar):
+        self.root = root
+        self.resultVar = resultVar
+        self.parser = stopParser()
 
-# def buttonEntry(root, tag, index, element, callbackFunc, text=None, image=None, imgholder=None, size=(60,60), rownum=8):
-#     if text is None and image is None:
-#         print("Error: No text and no image given in buttonEntry of", root)
-#     if NOPIL and text is None:
-#         text = str(image)
-#     if text is not None:
-#         button = Button(root, text=text, command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
-#     elif image is not None:
-#         getimage(imgholder, image, size)
-#         button = Button(root, image=imgholder[-1], command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
-#     button.grid(row=index//rownum, column=index%rownum, rowspan=1, columnspan=1, padx=1, pady=1, sticky="nsew")
-#     return button
+    def initialization(self, setting=None):
+        self.tree = self.parser.reform(self.parser.parse(self.resultVar.get()))
+        self.canvas = Canvas(self.root, highlightthickness=0)
+        self.canvas.grid(row=0, column=0)
+        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[])
+        Button(self.root, text="Confirm", command=self.confirmStop).grid(row=1, column=0, sticky="nsew")
+    
+    def responseActionOnTree(self, event):
+        widget = event.widget
+        action = widget.action
+        nodeindex = widget.nodeindex            
+        # locate current node
+        cnode = self.tree
+        pnode = None
+        for i in nodeindex:
+            pnode = cnode
+            cindex = i
+            cnode = pnode["obj"][cindex]
 
+        if action == "select_op":
+            cnode["op"] = TX2OP[widget.get()]
+            if cnode["op"] in PRESETTINGOPS and len(cnode["obj"])==0:
+                cnode["obj"] = ["red", 11]
+            if cnode["op"] in CMPOPS and len(cnode["obj"])==0:
+                cnode["obj"] = [[h["name"] for h in data["heroes"]][0], 11]
+        elif action == "select_obj1":
+            cnode["obj"][0] = widget.get()
+        elif action == "input_obj2":
+            try:
+                cnode["obj"][1] = int(widget.get())
+            except:
+                cnode["obj"][1] = -1
+        elif action == "add_child":
+            cnode["obj"].append({"op":"and","obj":[]})
+        elif action == "remove_this":
+            if pnode is None:
+                pass
+            else:
+                pnode["obj"] = pnode["obj"][:cindex] + pnode["obj"][cindex+1:]
+        
+        self.canvas.grid_forget()
+        self.canvas = Canvas(self.root, highlightthickness=0)
+        self.canvas.grid(row=0, column=0)
+        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[])
+    
+    def confirmStop(self):
+        self.resultVar.set(self.parser.dump(self.parser.reform_back(self.tree)))
+
+    
+def drawTree(root, tree, crow, cdepth, callback, index):
+    LogExp_RowWidget(root, tree, crow, cdepth, callback, index)
+    drawnrownum = 1
+
+    op = tree["op"]
+    obj = tree["obj"]
+    if op in LOGICOPS:
+        for i, node in enumerate(obj):
+            drawnrownum += drawTree(root, node, crow+drawnrownum, cdepth+1, callback=callback, index=index+[i])
+    return drawnrownum
+        
+
+def LogExp_RowWidget(root, node, rownum, depth, callback, nodeindex):
+    row = Canvas(root, highlightthickness=0)
+    row.grid(row=rownum, column=1, rowspan=1, columnspan=1, sticky="nsew")
+
+    # indent
+    Label(row, text="    "*depth).grid(row=0, column=0, rowspan=1, columnspan=1, sticky="w")
+    if type(node) is str:
+        # True
+        Label(row, text=node).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="w")
+        # -
+        createTextButton(row, "-", 0, 2, callback=callback, action="remove_this", nodeindex=nodeindex)
+        return
+    op = node["op"]
+    obj = node["obj"]
+    # Label(row, text=op if op in ["and", "or", "not"] else str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="nsew")
+    if op in LOGICOPS:
+        # All
+        createCombobox(row, list(TX2OP.keys()), 0, 1, init=OP2TX[op], callback=callback, action="select_op", nodeindex=nodeindex)
+        # +
+        createTextButton(row, "+", 0, 2, callback=callback, action="add_child", nodeindex=nodeindex)
+        # -
+        createTextButton(row, "-", 0, 3, callback=callback, padx=0, action="remove_this", nodeindex=nodeindex)
+    elif op in PRESETTINGOPS:
+        # All
+        createCombobox(row, list(TX2OP.keys()), 0, 1, init=OP2TX[op], callback=callback, action="select_op", nodeindex=nodeindex)
+        # red
+        createCombobox(row, COLORS, 0, 2, init=obj[0], callback=callback, action="select_obj1", nodeindex=nodeindex)
+        # 11
+        createInputbox(row, 0, 3, init=str(obj[1]), callback=callback, action="input_obj2", nodeindex=nodeindex)
+        # -
+        createTextButton(row, "-", 0, 4, callback=callback, action="remove_this", nodeindex=nodeindex)
+    elif op in CMPOPS:
+        # name
+        createCombobox(row, [h["name"] for h in data["heroes"]], 0, 1, init=obj[0], callback=callback, action="select_obj1", nodeindex=nodeindex)
+        # >=
+        createCombobox(row, list(TX2OP.keys()), 0, 2, init=OP2TX[op], callback=callback, action="select_op", nodeindex=nodeindex)
+        # 11
+        createInputbox(row, 0, 3, init=str(obj[1]), callback=callback, action="input_obj2", nodeindex=nodeindex)
+        # -
+        createTextButton(row, "-", 0, 4, callback=callback, action="remove_this", nodeindex=nodeindex)
+
+def createCombobox(root, values, r, c, init, callback, width=10, padx=0, pady=0, sticky='w', **kwargs):
+    box = ttk.Combobox(root, values=values, width=width)
+    box.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    box.set(init)
+    box.__dict__ = dict_merge(box.__dict__, kwargs)
+    box.bind("<<ComboboxSelected>>", callback)
+
+def createInputbox(root, r, c, init, callback, width=10, padx=0, pady=0, sticky='w', **kwargs):
+    box = Entry(root, width=width)
+    box.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    setEntry(box, init)
+    box.__dict__ = dict_merge(box.__dict__, kwargs)
+    box.bind("<KeyRelease>", callback)
+
+def createTextButton(root, text, r, c, callback, padx=4, pady=0, sticky='w', **kwargs):
+    button = Button(root, text=text)
+    button.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    button.__dict__ = dict_merge(button.__dict__, kwargs)
+    button.bind("<Button-1>", callback)
+
+def setEntry(entry, text):
+    entry.delete(0,END)
+    entry.insert(0, text)
+
+# def LogExp_RowWidget(root, node, rownum, depth, callbacks, nodeindex):
+#     row = Canvas(root, highlightthickness=0)
+#     row.grid(row=rownum, column=1, rowspan=1, columnspan=1, sticky="nsew")
+
+#     op = node["op"]
+#     obj = node["obj"]
+#     # if depth > 0:
+#     Label(row, text="    "*depth).grid(row=0, column=0, rowspan=1, columnspan=1, sticky="w")
+#     # Label(row, text=op if op in ["and", "or", "not"] else str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="nsew")
+#     if op in LOGICOPS:
+#         # All
+#         modeselectbox = ttk.Combobox(row, values=list(TX2OP.keys()), width=10)
+#         modeselectbox.nodeindex = nodeindex
+#         modeselectbox.grid(row=0, column=1, sticky="w")
+#         modeselectbox.set(OP2TX[op])
+#         modeselectbox.bind("<<ComboboxSelected>>", callbacks["select_op"])
+#         # +
+#         addbutton = Button(row, text="+", command=lambda nodeindex=nodeindex: callbacks["add_child"](nodeindex))
+#         addbutton.grid(row=0, column=2, rowspan=1, columnspan=1, padx=4, sticky="w")
+#         # -
+#         removebutton = Button(row, text="-", command=lambda nodeindex=nodeindex: callbacks["remove_this"](nodeindex))
+#         removebutton.grid(row=0, column=3, rowspan=1, columnspan=1, padx=1, sticky="w")
+#     elif op in PRESETTINGOPS:
+#         # All
+#         modeselectbox = ttk.Combobox(row, values=list(TX2OP.keys()), width=10)
+#         modeselectbox.nodeindex = nodeindex
+#         modeselectbox.grid(row=0, column=1, sticky="w")
+#         modeselectbox.set(OP2TX[op])
+#         modeselectbox.bind("<<ComboboxSelected>>", callbacks["select_op"])
+#         # red
+#         colorselectbox = ttk.Combobox(row, values=COLORS, width=10)
+#         colorselectbox.nodeindex = nodeindex
+#         colorselectbox.grid(row=0, column=2, sticky="w")
+#         colorselectbox.set(obj[0])
+#         colorselectbox.bind("<<ComboboxSelected>>", callbacks["select_obj1"])
+#         # 11
+#         numinputbox = Entry(row, width=10)
+#         numinputbox.nodeindex = nodeindex
+#         numinputbox.grid(row=0, column=3, sticky="w")
+#         numinputbox.bind("<KeyRelease>", callbacks["input_obj2"])
+#         # -
+#         removebutton = Button(row, text="-", command=lambda nodeindex=nodeindex: callbacks["remove_this"](nodeindex))
+#         removebutton.grid(row=0, column=4, rowspan=1, columnspan=1, padx=1, sticky="w")
+#     elif op in CMPOPS:
+#         # name
+#         nameselectbox = ttk.Combobox(row, values=[h["name"] for h in data["heroes"]], width=10)
+#         nameselectbox.nodeindex = nodeindex
+#         nameselectbox.grid(row=0, column=1, sticky="w")
+#         nameselectbox.set(obj[0])
+#         nameselectbox.bind("<<ComboboxSelected>>", callbacks["select_obj1"])
+#         # >=
+#         cmpselectbox = ttk.Combobox(row, values=list(TX2OP.keys()), width=10)
+#         cmpselectbox.nodeindex = nodeindex
+#         cmpselectbox.grid(row=0, column=2, sticky="w")
+#         cmpselectbox.set(OP2TX[op])
+#         cmpselectbox.bind("<<ComboboxSelected>>", callbacks["select_op"])
+#         # 11
+#         numinputbox = Entry(row, width=10)
+#         numinputbox.nodeindex = nodeindex
+#         numinputbox.grid(row=0, column=3, sticky="w")
+#         numinputbox.bind("<KeyRelease>", callbacks["input_obj2"])
+#         # -
+#         removebutton = Button(row, text="-", command=lambda nodeindex=nodeindex: callbacks["remove_this"](nodeindex))
+#         removebutton.grid(row=0, column=4, rowspan=1, columnspan=1, padx=1, sticky="w")
+
+
+
+
+        
 
 
