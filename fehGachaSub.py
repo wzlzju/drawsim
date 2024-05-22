@@ -9,7 +9,7 @@ import fehGacha as gacha
 from const import *
 from util import *
 try:
-    from PIL import Image, ImageTk
+    from PIL import Image, ImageTk, ImageDraw, ImageFont
     import numpy as np
     NOPIL = False
 except:
@@ -51,7 +51,8 @@ class charaPanel(object):
         # configs
         filterConfig = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.filterFunc, "buttonList": self.filterButtonList})
         imgFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/"+e, "imgholder": self.filterImgHolder})
-        textFilterConfig = dict_merge(filterConfig, {"textFunc": lambda i,e: str(e)})
+        # textFilterConfig = dict_merge(filterConfig, {"textFunc": lambda i,e: str(e)})
+        textFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: str(e), "imgholder": self.filterImgHolder})
 
         # widgets
         self.results = Canvas(self.root, bg="white", highlightthickness=0)
@@ -255,10 +256,16 @@ class strategyPanel(object):
 
 def getimage(holders, label, size=(60, 60)):
     if label:
-        imgpath = os.path.join(IMGPATH, label)
-        imgpath = addImgExt(imgpath)
-        img = Image.open(imgpath)
-        img = img.resize(size)
+        try:
+            imgpath = os.path.join(IMGPATH, label)
+            imgpath = addImgExt(imgpath)
+            img = Image.open(imgpath)
+            img = img.resize(size)
+        except:     # no image file
+            img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype("arial.ttf", 16)
+            draw.text((int(size[0]*0.3), int(size[1]*0.25)), label, (0,0,0), font=font)
     else:
         img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
     holders.append(ImageTk.PhotoImage(img))
@@ -292,7 +299,9 @@ def buttonEntry(root=None, tag="", index=0, element=None, callbackFunc=None, tex
     if NOPIL and text is None:
         text = str(image)
     if text is not None:
-        button = Button(root, text=text, command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
+        # button = Button(root, text=text, command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
+        getimage(imgholder, text, size)
+        button = Button(root, image=imgholder[-1], command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
     elif image is not None:
         getimage(imgholder, image, size)
         button = Button(root, image=imgholder[-1], command=lambda t=tag,i=index,e=element: callbackFunc(t,i,e))
@@ -300,16 +309,18 @@ def buttonEntry(root=None, tag="", index=0, element=None, callbackFunc=None, tex
     return button
 
 class stopPanel(object):
-    def __init__(self, root, resultVar):
+    def __init__(self, root, resultVar, up=None, debug_print=print):
         self.root = root
         self.resultVar = resultVar
         self.parser = stopParser()
+        self.up = up if up else []
+        self.debug_print = debug_print
 
     def initialization(self, setting=None):
         self.tree = self.parser.reform(self.parser.parse(self.resultVar.get()))
         self.canvas = Canvas(self.root, highlightthickness=0)
         self.canvas.grid(row=0, column=0)
-        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[])
+        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[], cmpop_values=self.up+[h["name"] for h in data["heroes"]])
         Button(self.root, text="Confirm", command=self.confirmStop).grid(row=1, column=0, sticky="nsew")
     
     def responseActionOnTree(self, event):
@@ -326,9 +337,9 @@ class stopPanel(object):
 
         if action == "select_op":
             cnode["op"] = TX2OP[widget.get()]
-            if cnode["op"] in PRESETTINGOPS and len(cnode["obj"])==0:
+            if cnode["op"] in PRESETTINGOPS and len(cnode["obj"])!=2:
                 cnode["obj"] = ["red", 11]
-            if cnode["op"] in CMPOPS and len(cnode["obj"])==0:
+            if cnode["op"] in CMPOPS and len(cnode["obj"])!=2:
                 cnode["obj"] = [[h["name"] for h in data["heroes"]][0], 11]
         elif action == "select_obj1":
             cnode["obj"][0] = widget.get()
@@ -341,21 +352,26 @@ class stopPanel(object):
             cnode["obj"].append({"op":"and","obj":[]})
         elif action == "remove_this":
             if pnode is None:
-                pass
+                cnode["op"] = "and"
+                cnode["obj"] = []
             else:
                 pnode["obj"] = pnode["obj"][:cindex] + pnode["obj"][cindex+1:]
         
-        self.canvas.grid_forget()
-        self.canvas = Canvas(self.root, highlightthickness=0)
-        self.canvas.grid(row=0, column=0)
-        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[])
+        if action in ["select_op", "add_child", "remove_this"]:
+            self.canvas.grid_forget()
+            self.canvas = Canvas(self.root, highlightthickness=0)
+            self.canvas.grid(row=0, column=0)
+            drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[])
     
     def confirmStop(self):
-        self.resultVar.set(self.parser.dump(self.parser.reform_back(self.tree)))
+        try:
+            self.resultVar.set(self.parser.dump(self.parser.reform_back(self.tree)))
+        except Exception as e:
+            self.debug_print(e)
 
     
-def drawTree(root, tree, crow, cdepth, callback, index):
-    LogExp_RowWidget(root, tree, crow, cdepth, callback, index)
+def drawTree(root, tree, crow, cdepth, callback, index, **kwargs):
+    LogExp_RowWidget(root, tree, crow, cdepth, callback, index, **kwargs)
     drawnrownum = 1
 
     if type(tree) is not str and type(tree) is not int:
@@ -363,141 +379,69 @@ def drawTree(root, tree, crow, cdepth, callback, index):
         obj = tree["obj"]
         if op in LOGICOPS:
             for i, node in enumerate(obj):
-                drawnrownum += drawTree(root, node, crow+drawnrownum, cdepth+1, callback=callback, index=index+[i])
+                drawnrownum += drawTree(root, node, crow+drawnrownum, cdepth+1, callback=callback, index=index+[i], **kwargs)
     return drawnrownum
         
 
-def LogExp_RowWidget(root, node, rownum, depth, callback, nodeindex):
+def LogExp_RowWidget(root, node, rownum, depth, callback, nodeindex, **kwargs):
     row = Canvas(root, highlightthickness=0)
-    row.grid(row=rownum, column=1, rowspan=1, columnspan=1, sticky="nsew")
+    row.grid(row=rownum, column=1, rowspan=1, columnspan=1, padx=5, pady=5, sticky="nsew")
 
-    # indent
-    Label(row, text="    "*depth).grid(row=0, column=0, rowspan=1, columnspan=1, sticky="w")
-    if type(node) is str or type(node) is int:
-        # True
-        Label(row, text=str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="w")
-        # -
-        createTextButton(row, "-", 0, 2, callback=callback, action="remove_this", nodeindex=nodeindex)
+    indent = Label(row, image=PhotoImage(width=1, height=1),height=24,width=depth*24, padx=0,pady=0)
+    # indent.grid(row=0, column=0, rowspan=1, columnspan=1, sticky="w")
+    indent.pack(side=LEFT)
+    # str/int as a leaf node
+    if type(node) in [str, int, bool]:
+        # Label(row, text=str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="w")
+        Label(row, text=str(node)).pack(side=LEFT)
+        createTextButton(row, "-", 0, 2, callback=callback, side=RIGHT, action="remove_this", nodeindex=nodeindex)
         return
     op = node["op"]
     obj = node["obj"]
-    # Label(row, text=op if op in ["and", "or", "not"] else str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="nsew")
     if op in LOGICOPS:
-        # All
         createCombobox(row, list(TX2OP.keys()), 0, 1, init=OP2TX[op], callback=callback, action="select_op", nodeindex=nodeindex)
-        # +
-        createTextButton(row, "+", 0, 2, callback=callback, action="add_child", nodeindex=nodeindex)
-        # -
-        createTextButton(row, "-", 0, 3, callback=callback, padx=0, action="remove_this", nodeindex=nodeindex)
+        createTextButton(row, "-", 0, 3, callback=callback, side=RIGHT, action="remove_this", nodeindex=nodeindex)
+        createTextButton(row, "+", 0, 2, callback=callback, side=RIGHT, action="add_child", nodeindex=nodeindex)
     elif op in PRESETTINGOPS:
-        # All
         createCombobox(row, list(TX2OP.keys()), 0, 1, init=OP2TX[op], callback=callback, action="select_op", nodeindex=nodeindex)
-        # red
         createCombobox(row, COLORS, 0, 2, init=obj[0], callback=callback, action="select_obj1", nodeindex=nodeindex)
-        # 11
         createInputbox(row, 0, 3, init=str(obj[1]), callback=callback, action="input_obj2", nodeindex=nodeindex)
-        # -
-        createTextButton(row, "-", 0, 4, callback=callback, action="remove_this", nodeindex=nodeindex)
+        createTextButton(row, "-", 0, 4, callback=callback, side=RIGHT, action="remove_this", nodeindex=nodeindex)
     elif op in CMPOPS:
-        # name
-        createCombobox(row, [h["name"] for h in data["heroes"]], 0, 1, init=obj[0], callback=callback, action="select_obj1", nodeindex=nodeindex)
-        # >=
+        createCombobox(row, kwargs.get("cmpop_values", [h["name"] for h in data["heroes"]]), 0, 1, init=obj[0], callback=callback, action="select_obj1", nodeindex=nodeindex)
         createCombobox(row, list(TX2OP.keys()), 0, 2, init=OP2TX[op], callback=callback, action="select_op", nodeindex=nodeindex)
-        # 11
         createInputbox(row, 0, 3, init=str(obj[1]), callback=callback, action="input_obj2", nodeindex=nodeindex)
-        # -
-        createTextButton(row, "-", 0, 4, callback=callback, action="remove_this", nodeindex=nodeindex)
+        createTextButton(row, "-", 0, 4, callback=callback, side=RIGHT, action="remove_this", nodeindex=nodeindex)
+    # indent.configure(bg=OPCOLORS_BG.get(op, OPCOLORS_BG["default"]))
+    row.configure(bg=OPCOLORS_BG.get(op, OPCOLORS_BG["default"]))
 
-def createCombobox(root, values, r, c, init, callback, width=10, padx=0, pady=0, sticky='w', **kwargs):
+def createCombobox(root, values, r, c, init, callback, width=10, padx=2, pady=2, sticky='w', side=LEFT, **kwargs):
     box = ttk.Combobox(root, values=values, width=width)
-    box.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    # box.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    box.pack(side=side)
     box.set(init)
     box.__dict__ = dict_merge(box.__dict__, kwargs)
     box.bind("<<ComboboxSelected>>", callback)
 
-def createInputbox(root, r, c, init, callback, width=10, padx=0, pady=0, sticky='w', **kwargs):
+def createInputbox(root, r, c, init, callback, width=10, padx=2, pady=2, sticky='w', side=LEFT, **kwargs):
     box = Entry(root, width=width)
-    box.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    # box.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    box.pack(side=side)
     setEntry(box, init)
     box.__dict__ = dict_merge(box.__dict__, kwargs)
     box.bind("<KeyRelease>", callback)
 
-def createTextButton(root, text, r, c, callback, padx=4, pady=0, sticky='w', **kwargs):
-    button = Button(root, text=text)
-    button.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+def createTextButton(root, text, r, c, callback, height=16, width=16, padx=2, pady=2, sticky='w', side=LEFT, **kwargs):
+    pixel = PhotoImage(width=1, height=1)
+    button = Button(root, text=text, image=pixel, compound="center", padx=0, pady=0, height=height, width=width)
+    # button.grid(row=r, column=c, padx=padx, pady=pady, sticky=sticky)
+    button.pack(side=side)
     button.__dict__ = dict_merge(button.__dict__, kwargs)
     button.bind("<Button-1>", callback)
 
 def setEntry(entry, text):
     entry.delete(0,END)
     entry.insert(0, text)
-
-# def LogExp_RowWidget(root, node, rownum, depth, callbacks, nodeindex):
-#     row = Canvas(root, highlightthickness=0)
-#     row.grid(row=rownum, column=1, rowspan=1, columnspan=1, sticky="nsew")
-
-#     op = node["op"]
-#     obj = node["obj"]
-#     # if depth > 0:
-#     Label(row, text="    "*depth).grid(row=0, column=0, rowspan=1, columnspan=1, sticky="w")
-#     # Label(row, text=op if op in ["and", "or", "not"] else str(node)).grid(row=0, column=1, rowspan=1, columnspan=1, sticky="nsew")
-#     if op in LOGICOPS:
-#         # All
-#         modeselectbox = ttk.Combobox(row, values=list(TX2OP.keys()), width=10)
-#         modeselectbox.nodeindex = nodeindex
-#         modeselectbox.grid(row=0, column=1, sticky="w")
-#         modeselectbox.set(OP2TX[op])
-#         modeselectbox.bind("<<ComboboxSelected>>", callbacks["select_op"])
-#         # +
-#         addbutton = Button(row, text="+", command=lambda nodeindex=nodeindex: callbacks["add_child"](nodeindex))
-#         addbutton.grid(row=0, column=2, rowspan=1, columnspan=1, padx=4, sticky="w")
-#         # -
-#         removebutton = Button(row, text="-", command=lambda nodeindex=nodeindex: callbacks["remove_this"](nodeindex))
-#         removebutton.grid(row=0, column=3, rowspan=1, columnspan=1, padx=1, sticky="w")
-#     elif op in PRESETTINGOPS:
-#         # All
-#         modeselectbox = ttk.Combobox(row, values=list(TX2OP.keys()), width=10)
-#         modeselectbox.nodeindex = nodeindex
-#         modeselectbox.grid(row=0, column=1, sticky="w")
-#         modeselectbox.set(OP2TX[op])
-#         modeselectbox.bind("<<ComboboxSelected>>", callbacks["select_op"])
-#         # red
-#         colorselectbox = ttk.Combobox(row, values=COLORS, width=10)
-#         colorselectbox.nodeindex = nodeindex
-#         colorselectbox.grid(row=0, column=2, sticky="w")
-#         colorselectbox.set(obj[0])
-#         colorselectbox.bind("<<ComboboxSelected>>", callbacks["select_obj1"])
-#         # 11
-#         numinputbox = Entry(row, width=10)
-#         numinputbox.nodeindex = nodeindex
-#         numinputbox.grid(row=0, column=3, sticky="w")
-#         numinputbox.bind("<KeyRelease>", callbacks["input_obj2"])
-#         # -
-#         removebutton = Button(row, text="-", command=lambda nodeindex=nodeindex: callbacks["remove_this"](nodeindex))
-#         removebutton.grid(row=0, column=4, rowspan=1, columnspan=1, padx=1, sticky="w")
-#     elif op in CMPOPS:
-#         # name
-#         nameselectbox = ttk.Combobox(row, values=[h["name"] for h in data["heroes"]], width=10)
-#         nameselectbox.nodeindex = nodeindex
-#         nameselectbox.grid(row=0, column=1, sticky="w")
-#         nameselectbox.set(obj[0])
-#         nameselectbox.bind("<<ComboboxSelected>>", callbacks["select_obj1"])
-#         # >=
-#         cmpselectbox = ttk.Combobox(row, values=list(TX2OP.keys()), width=10)
-#         cmpselectbox.nodeindex = nodeindex
-#         cmpselectbox.grid(row=0, column=2, sticky="w")
-#         cmpselectbox.set(OP2TX[op])
-#         cmpselectbox.bind("<<ComboboxSelected>>", callbacks["select_op"])
-#         # 11
-#         numinputbox = Entry(row, width=10)
-#         numinputbox.nodeindex = nodeindex
-#         numinputbox.grid(row=0, column=3, sticky="w")
-#         numinputbox.bind("<KeyRelease>", callbacks["input_obj2"])
-#         # -
-#         removebutton = Button(row, text="-", command=lambda nodeindex=nodeindex: callbacks["remove_this"](nodeindex))
-#         removebutton.grid(row=0, column=4, rowspan=1, columnspan=1, padx=1, sticky="w")
-
-
 
 
         

@@ -35,6 +35,9 @@ class gacha(object):
         self.count = 0
         self.lantern = 0
 
+    def getAllUps(self):
+        return self.charas['5u'] + self.charas['4u']
+
     def rollARound(self):
         round = [None] * 5
         ranks = list(self.cprobs.keys())

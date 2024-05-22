@@ -460,15 +460,11 @@ class Application(Frame):
         newWindow = Toplevel(self)
         panel = strategyPanel(newWindow, textVar)
         panel.initialization()
-        # panel.updateResult()
-        # panel.updateCharas()
     
     def selectStop(self, textVar):
         newWindow = Toplevel(self)
-        panel = stopPanel(newWindow, textVar)
+        panel = stopPanel(newWindow, textVar, up=[c["name"] for c in self.gacha.getAllUps()], debug_print=self.debug_print)
         panel.initialization()
-        # panel.updateResult()
-        # panel.updateCharas()
 
     def simu_parseStrategy(self, colorList):
         strategyStr = self.strategyStr.get()
