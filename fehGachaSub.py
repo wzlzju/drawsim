@@ -23,6 +23,49 @@ except:
     NODATA = True
 
 
+class VerticalScrolledFrame(ttk.Frame):
+    """
+    https://stackoverflow.com/questions/16188420/tkinter-scrollbar-for-frame
+    """
+    def __init__(self, parent, *args, **kw):
+        ttk.Frame.__init__(self, parent, *args, **kw)
+
+        # Create a canvas object and a vertical scrollbar for scrolling it.
+        vscrollbar = ttk.Scrollbar(self, orient=VERTICAL)
+        vscrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
+        canvas = Canvas(self, *args, bd=0, highlightthickness=0, yscrollcommand=vscrollbar.set, **kw)
+        canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
+        vscrollbar.config(command=canvas.yview)
+
+        # Reset the view
+        canvas.xview_moveto(0)
+        canvas.yview_moveto(0)
+
+        # Create a frame inside the canvas which will be scrolled with it.
+        self.interior = interior = ttk.Frame(canvas)
+        interior_id = canvas.create_window(0, 0, window=interior, anchor=NW)
+
+        # Track changes to the canvas and frame width and sync them,
+        # also updating the scrollbar.
+        def _configure_interior(event):
+            # Update the scrollbars to match the size of the inner frame.
+            size = (interior.winfo_reqwidth(), interior.winfo_reqheight())
+            canvas.config(scrollregion="0 0 %s %s" % size)
+            if interior.winfo_reqwidth() != canvas.winfo_width():
+                # Update the canvas's width to fit the inner frame.
+                canvas.config(width=interior.winfo_reqwidth())
+        interior.bind('<Configure>', _configure_interior)
+
+        def _configure_canvas(event):
+            if interior.winfo_reqwidth() != canvas.winfo_width():
+                # Update the inner frame's width to fill the canvas.
+                canvas.itemconfigure(interior_id, width=canvas.winfo_width())
+        canvas.bind('<Configure>', _configure_canvas)
+
+        def _on_mousewheel(event):
+            delta = int(event.delta/120) if os.name=="nt" else event.delta
+            canvas.yview_scroll(-1*delta, "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
 
 class charaPanel(object):
@@ -55,20 +98,24 @@ class charaPanel(object):
         imgFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/"+e, "imgholder": self.filterImgHolder})
         # textFilterConfig = dict_merge(filterConfig, {"textFunc": lambda i,e: str(e)})
         textFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: str(e), "imgholder": self.filterImgHolder})
-
+        
         # widgets
-        self.results = Canvas(self.root, bg="white", highlightthickness=0)
+        self.results = Canvas(self.root, highlightthickness=0)
         self.results.grid(row=0, column=0, rowspan=2, columnspan=4, padx=5, pady=5, sticky="nsew")
         
-        self.filters = Canvas(self.root, bg="white", highlightthickness=0)
+        self.filters = Canvas(self.root, highlightthickness=0)
         self.filters.grid(row=2, column=0, rowspan=5, columnspan=4, padx=5, pady=5, sticky="nsew")
         buttonArray(root=self.filters, elements=OPTIONS["color"], tag="color", **imgFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["move"], tag="move", begin_index=len(self.filterButtonList), **imgFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["weapon"], tag="weapon", begin_index=len(self.filterButtonList), **imgFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["version"], tag="version", begin_index=len(self.filterButtonList), **textFilterConfig)
 
-        self.charas = Canvas(self.root, bg="white", highlightthickness=0)
-        self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.frame3 = VerticalScrolledFrame(self.root)
+        self.frame3.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.charas = self.frame3.interior
+
+        # self.charas = Canvas(self.root, highlightthickness=0)
+        # self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
 
         # settings
         if setting:
