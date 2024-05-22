@@ -151,7 +151,11 @@ class Application(Frame):
 
         self.upInput = Canvas(self.inputPanel, highlightthickness=0)
         self.upInput.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        rowId = 0
+        upInput = Canvas(self.upInput, highlightthickness=0)
+        upInput.grid(row=0,column=0, padx=5, pady=5, sticky="w")
+        Button(upInput, text="select 5 star up", command=lambda r='5u':self.selectChara_AllColors(r)).pack(side=LEFT)
+        Button(upInput, text="select 4 star up", command=lambda r='4u':self.selectChara_AllColors(r)).pack(side=LEFT)
+        rowId = 1
         for pup in ['5u', '4u']:
             for color in COLORS:
                 upInput = Canvas(self.upInput, highlightthickness=0)
@@ -316,6 +320,13 @@ class Application(Frame):
         panel.updateResult()
         panel.updateCharas()
 
+    def selectChara_AllColors(self, rank, textVars=None):
+        newWindow = Toplevel(self)
+        panel = charaPanel(newWindow, self.up[rank])
+        panel.initialization()
+        panel.updateResult()
+        panel.updateCharas()
+
     def update_CHEAT(self):
         self.updateCheatingInfoonCanvas()
     
@@ -463,7 +474,10 @@ class Application(Frame):
     
     def selectStop(self, textVar):
         newWindow = Toplevel(self)
+        # user-confirmed up
         panel = stopPanel(newWindow, textVar, up=[c["name"] for c in self.gacha.getAllUps()], debug_print=self.debug_print)
+        # user-input up
+        # panel = stopPanel(newWindow, textVar, up=[c["name"] for c in self.up['5u']+self.up['4u']], debug_print=self.debug_print)
         panel.initialization()
 
     def simu_parseStrategy(self, colorList):

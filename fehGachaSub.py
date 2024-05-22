@@ -18,6 +18,7 @@ try:
     # from fehdata import data
     from tmpdata import data
     NODATA = False
+    name2color = {c["name"]:c["color"] for c in data["heroes"]}
 except:
     NODATA = True
 
@@ -27,11 +28,12 @@ except:
 class charaPanel(object):
     def __init__(self, root, resultVar):
         self.root = root
-        self.resultVar = resultVar
+        self.resultVar = resultVar if type(resultVar) is StringVar else None
+        self.resultVars = resultVar if type(resultVar) is dict else None
 
     def initialization(self, setting=None):
         # constants
-        self.result = self.getresult(self.resultVar.get())
+        self.result = self.getresult()
         self.options = {_:set() for _ in OPTIONS}
         self.buttonsize = (30,30)
         self.w_num = len(COLORS)+len(MOVES)
@@ -76,8 +78,30 @@ class charaPanel(object):
         self.updateFilters()
         self.updateCharas()
     
-    def getresult(self, resstr):
+    def getresult(self):
+        if self.resultVar is not None:
+            return self._getresultfromstring(self.resultVar.get())
+        else:
+            return functools.reduce(lambda x,y:x+y, [self._getresultfromstring(var.get()) for var in self.resultVars.values()])
+    
+    def _getresultfromstring(self, resstr):
         return resstr.split(',') if len(resstr)>0 else []
+    
+    def setresult(self, reslist):
+        if self.resultVar is not None:
+            self.resultVar.set(self._resl2str(reslist))
+        else:
+            color2names = {
+                "red": [],
+                "blue": [],
+                "green": [],
+                "gray": []
+            }
+            list(map(lambda name:color2names[name2color[name]].append(name), reslist))
+            list(map(lambda color:self.resultVars[color].set(self._resl2str(color2names[color])), self.resultVars.keys()))
+    
+    def _resl2str(self, reslist):
+        return ','.join(reslist)
     
     def filterFunc(self, tag, index, element, **kwargs):
         if self.filterButtonList[index]["relief"] == SUNKEN:
@@ -134,7 +158,8 @@ class charaPanel(object):
     
     def charaFunc(self, tag, index, element, **kwargs):
         self.result.append(element["name"])
-        self.resultVar.set(','.join(self.result))
+        self.setresult(self.result)
+        # self.resultVar.set(','.join(self.result))
         self.updateResult()
 
     def updateResult(self):
@@ -149,7 +174,8 @@ class charaPanel(object):
     
     def resultFunc(self, tag, index, element, **kwargs):
         del self.result[index]
-        self.resultVar.set(','.join(self.result))
+        self.setresult(self.result)
+        # self.resultVar.set(','.join(self.result))
         self.updateResult()
 
 class strategyPanel(object):
