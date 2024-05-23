@@ -633,7 +633,7 @@ class Application(Frame):
 
 if __name__ == "__main__":
     root = Tk()
-    root.geometry('1200x800+200+300')
+    root.geometry('1200x800+1300+900')
     root.title('')
     app = Application(master=root)
     app.update()

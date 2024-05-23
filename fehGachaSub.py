@@ -33,13 +33,11 @@ class VerticalScrolledFrame(ttk.Frame):
         # Create a canvas object and a vertical scrollbar for scrolling it.
         vscrollbar = ttk.Scrollbar(self, orient=VERTICAL)
         vscrollbar.pack(fill=Y, side=RIGHT, expand=FALSE)
-        canvas = Canvas(self, *args, bd=0, highlightthickness=0, yscrollcommand=vscrollbar.set, **kw)
+        self.canvas = canvas = Canvas(self, *args, bd=0, highlightthickness=0, yscrollcommand=vscrollbar.set, **kw)
         canvas.pack(side=LEFT, fill=BOTH, expand=TRUE)
         vscrollbar.config(command=canvas.yview)
 
-        # Reset the view
-        canvas.xview_moveto(0)
-        canvas.yview_moveto(0)
+        self.resetViews()
 
         # Create a frame inside the canvas which will be scrolled with it.
         self.interior = interior = ttk.Frame(canvas)
@@ -66,6 +64,10 @@ class VerticalScrolledFrame(ttk.Frame):
             delta = int(event.delta/120) if os.name=="nt" else event.delta
             canvas.yview_scroll(-1*delta, "units")
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    
+    def resetViews(self):
+        self.canvas.xview_moveto(0)
+        self.canvas.yview_moveto(0)
 
 
 class charaPanel(object):
@@ -97,7 +99,8 @@ class charaPanel(object):
         filterConfig = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.filterFunc, "buttonList": self.filterButtonList})
         imgFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/"+e, "imgholder": self.filterImgHolder})
         # textFilterConfig = dict_merge(filterConfig, {"textFunc": lambda i,e: str(e)})
-        textFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: str(e), "imgholder": self.filterImgHolder})
+        versionFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/%d"%e, "imgholder": self.filterImgHolder})
+        gameFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/game%d"%e, "imgholder": self.filterImgHolder})
         
         # widgets
         self.results = Canvas(self.root, highlightthickness=0)
@@ -108,11 +111,12 @@ class charaPanel(object):
         buttonArray(root=self.filters, elements=OPTIONS["color"], tag="color", **imgFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["move"], tag="move", begin_index=len(self.filterButtonList), **imgFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["weapon"], tag="weapon", begin_index=len(self.filterButtonList), **imgFilterConfig)
-        buttonArray(root=self.filters, elements=OPTIONS["version"], tag="version", begin_index=len(self.filterButtonList), **textFilterConfig)
+        buttonArray(root=self.filters, elements=OPTIONS["version"], tag="version", begin_index=len(self.filterButtonList), **versionFilterConfig)
+        buttonArray(root=self.filters, elements=OPTIONS["game"], tag="game", begin_index=len(self.filterButtonList), **gameFilterConfig)
 
-        self.frame3 = VerticalScrolledFrame(self.root)
-        self.frame3.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
-        self.charas = self.frame3.interior
+        self.charasframe = VerticalScrolledFrame(self.root, height=560)
+        self.charasframe.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.charas = self.charasframe.interior
 
         # self.charas = Canvas(self.root, highlightthickness=0)
         # self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
@@ -188,6 +192,12 @@ class charaPanel(object):
                     flag = False
                 elif int(hero["version"].split(',')[0]) not in self.options['version']:
                     flag = False
+            if len(self.options['game']) > 0:
+                if type(hero["game"]) is int and hero["game"] not in self.options['game']:
+                    flag = False
+                elif type(hero["game"]) is str and \
+                    functools.reduce(lambda x,y:x and y, [int(g) not in self.options['game'] for g in hero["game"].split(',')]):
+                    flag = False
             if flag:
                 charas.append(hero)
         return charas
@@ -202,6 +212,8 @@ class charaPanel(object):
         config = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.charaFunc, "buttonList": self.charaButtonList, 
                                                         "imageFunc": lambda i,e: "chara/"+e["name"], "imgholder": self.charaImgHolder})
         buttonArray(root=self.charas, elements=charas, tag="chara", **config)
+        
+        self.charasframe.resetViews()
     
     def charaFunc(self, tag, index, element, **kwargs):
         self.result.append(element["name"])
@@ -338,7 +350,7 @@ def getimage(holders, label, size=(60, 60)):
             img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
             draw = ImageDraw.Draw(img)
             font = ImageFont.truetype("arial.ttf", 16)
-            draw.text((int(size[0]*0.3), int(size[1]*0.25)), label, (0,0,0), font=font)
+            draw.text((int(size[0]*0.3), int(size[1]*0.25)), label.split('/')[-1], (0,0,0), font=font)
     else:
         img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
     holders.append(ImageTk.PhotoImage(img))
