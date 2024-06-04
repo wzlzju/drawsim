@@ -71,20 +71,23 @@ class VerticalScrolledFrame(ttk.Frame):
 
 
 class charaPanel(object):
-    def __init__(self, root, resultVar):
+    def __init__(self, root, resultVar, charasCol=8, charasRow=14, buttonsize=(30,30)):
         self.root = root
         self.resultVar = resultVar if type(resultVar) is StringVar else None
         self.resultVars = resultVar if type(resultVar) is dict else None
+        self.charasCol = charasCol
+        self.charasRow = charasRow
+        self.buttonsize = buttonsize
+        self.charasWidth = (self.buttonsize[0]+10)*self.charasCol
+        self.charasHeight = (self.buttonsize[1]+10)*self.charasRow
 
     def initialization(self, setting=None):
         # constants
         self.result = self.getresult()
         self.options = {_:set() for _ in OPTIONS}
-        self.buttonsize = (30,30)
-        self.w_num = len(COLORS)+len(MOVES)
         self.smallButtonConfigs = {
             "size": self.buttonsize,
-            "rownum": self.w_num
+            "rownum": self.charasCol
         }
 
         # containers
@@ -114,12 +117,11 @@ class charaPanel(object):
         buttonArray(root=self.filters, elements=OPTIONS["version"], tag="version", begin_index=len(self.filterButtonList), **versionFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["game"], tag="game", begin_index=len(self.filterButtonList), **gameFilterConfig)
 
-        self.charasframe = VerticalScrolledFrame(self.root, height=560)
+        self.charasframe = VerticalScrolledFrame(self.root, height=self.charasHeight)
         self.charasframe.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.charascanvas = Canvas(self.root, highlightthickness=0)
         self.charas = self.charasframe.interior
-
-        # self.charas = Canvas(self.root, highlightthickness=0)
-        # self.charas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+        self.charas.scroll = True
 
         # settings
         if setting:
@@ -211,6 +213,16 @@ class charaPanel(object):
         self.charaImgHolder.clear()
         config = dict_merge(self.smallButtonConfigs, {"callbackFunc": self.charaFunc, "buttonList": self.charaButtonList, 
                                                         "imageFunc": lambda i,e: "chara/"+e["name"], "imgholder": self.charaImgHolder})
+        if self.charas.scroll and len(charas) <= self.charasCol*self.charasRow:
+            self.charasframe.grid_forget()
+            self.charascanvas.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+            self.charas = self.charascanvas
+            self.charas.scroll = False
+        elif not self.charas.scroll and len(charas) > self.charasCol*self.charasRow:
+            self.charascanvas.grid_forget()
+            self.charasframe.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
+            self.charas = self.charasframe.interior
+            self.charas.scroll = True
         buttonArray(root=self.charas, elements=charas, tag="chara", **config)
         
         self.charasframe.resetViews()
