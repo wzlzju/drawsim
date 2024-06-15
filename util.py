@@ -2,6 +2,14 @@ import os
 import collections, copy, functools
 import re
 import pyparsing
+from const import *
+from util import *
+try:
+    from PIL import Image, ImageTk, ImageDraw, ImageFont
+    import numpy as np
+    NOPIL = False
+except:
+    NOPIL = True
 
 
 def addImgExt(path):
@@ -13,6 +21,25 @@ def addImgExt(path):
         imgpath = path + ".png"
     return imgpath
 
+def getimage(holders=None, label=None, size=(60, 60)):
+    if label:
+        try:
+            imgpath = os.path.join(IMGPATH, label)
+            imgpath = addImgExt(imgpath)
+            img = Image.open(imgpath)
+            img = img.resize(size)
+        except:     # no image file
+            img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype("arial.ttf", 16)
+            draw.text((int(size[0]*0.3), int(size[1]*0.25)), label.split('/')[-1], (0,0,0), font=font)
+    else:
+        img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
+    img = ImageTk.PhotoImage(img)
+    if holders is not None:
+        holders.append(img)
+    else:
+        return img
 
 def densitycurve(x=None, samples=None):
     if not samples:
@@ -89,11 +116,15 @@ class stopParser(object):
 
         self.expr = pyparsing.Forward()
 
-        word = ~(and_ | or_ | not_ | true_ | false_) + \
+        self.word = ~(and_ | or_ | not_ | true_ | false_) + \
                 pyparsing.Word(pyparsing.alphas) + \
-                pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.Word(pyparsing.alphas)+')')) + \
-                pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+')'))
-        name = pyparsing.originalTextFor(word[1, ...]).setName("name")
+                pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.OneOrMore(pyparsing.Word(pyparsing.alphas))+')'))
+                # pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.Word(pyparsing.alphas)+')')) + \
+                # pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.Word(pyparsing.alphas)+pyparsing.Word(pyparsing.alphas)+')'))
+                # pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+pyparsing.ZeroOrMore(pyparsing.Group(' '+pyparsing.Word(pyparsing.alphas)))+')'))
+                # pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+')')) + \
+                # pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+' '+pyparsing.Word(pyparsing.alphas)+')'))
+        name = pyparsing.originalTextFor(self.word[1, ...]).setName("name")
         operator = pyparsing.oneOf("== != < > >= <= eq ne lt le gt ge", caseless=True) | pyparsing.Empty().addParseAction(lambda: ">=")
         condition = pyparsing.Group(name + operator + intNum).setName("condition")
         presetting = pyparsing.Group('[' + pyparsing.oneOf("all any") + pyparsing.oneOf("red blue green gray") + intNum + ']').setName("presetting")
@@ -106,6 +137,9 @@ class stopParser(object):
     
     def parse(self, s):
         return self.expr.parseString(s)
+    
+    def runTests(self, s):
+        self.expr.runTests(s)
     
     def dump(self, tree):
         def _dump_rec(tree):
@@ -288,7 +322,9 @@ class stopParser(object):
 
 if __name__ == "__main__":
     p = stopParser()
-    res = p.parse("[all red 11] or (a(b) (c) >= 10 and b(b) (c) >= 10 or c(b) (c) >= 10)")
+    s = "((Veyle >= 11 and Edelgard (Winter) >= 11 and Seidr (New Year) >= 10) or (Veyle >= 11 and Edelgard (Winter) >= 10 and Seidr (New Year) >= 11) or (Veyle >= 10 and Edelgard (Winter) >= 11 and Seidr (New Year) >= 11))"
+    # res = p.word.runTests("Seidr(M) (fm) (New Year)")
+    res = p.parse(s)
     print(res)
     print(p.dump(res))
     print(p.reform(res))

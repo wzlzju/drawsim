@@ -1,3 +1,4 @@
+TRANSPARENTCOLOR = "#abcdef"
 COLORS = ["red", "blue", "green", "gray"]
 WEAPONS = ["sword", "lance", "axe", "staff", "redtome", "bluetome", "greentome", "graytome", 
             "redbow", "bluebow", "greenbow", "graybow", "reddagger", "bluedagger", "greendagger", "graydagger", 

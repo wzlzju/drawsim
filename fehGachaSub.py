@@ -61,8 +61,9 @@ class VerticalScrolledFrame(ttk.Frame):
         canvas.bind('<Configure>', _configure_canvas)
 
         def _on_mousewheel(event):
-            delta = int(event.delta/120) if os.name=="nt" else event.delta
-            canvas.yview_scroll(-1*delta, "units")
+            if self.canvas.winfo_exists():
+                delta = int(event.delta/120) if os.name=="nt" else event.delta
+                canvas.yview_scroll(-1*delta, "units")
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
     
     def resetViews(self):
@@ -106,10 +107,10 @@ class charaPanel(object):
         gameFilterConfig = dict_merge(filterConfig, {"imageFunc": lambda i,e: "util/game%d"%e, "imgholder": self.filterImgHolder})
         
         # widgets
-        self.results = Canvas(self.root, highlightthickness=0)
+        self.results = Frame(self.root, highlightthickness=0)
         self.results.grid(row=0, column=0, rowspan=2, columnspan=4, padx=5, pady=5, sticky="nsew")
         
-        self.filters = Canvas(self.root, highlightthickness=0)
+        self.filters = Frame(self.root, highlightthickness=0)
         self.filters.grid(row=2, column=0, rowspan=5, columnspan=4, padx=5, pady=5, sticky="nsew")
         buttonArray(root=self.filters, elements=OPTIONS["color"], tag="color", **imgFilterConfig)
         buttonArray(root=self.filters, elements=OPTIONS["move"], tag="move", begin_index=len(self.filterButtonList), **imgFilterConfig)
@@ -119,7 +120,7 @@ class charaPanel(object):
 
         self.charasframe = VerticalScrolledFrame(self.root, height=self.charasHeight)
         self.charasframe.grid(row=7, column=0, rowspan=4, columnspan=4, padx=5, pady=5, sticky="nsew")
-        self.charascanvas = Canvas(self.root, highlightthickness=0)
+        self.charascanvas = Frame(self.root, highlightthickness=0)
         self.charas = self.charasframe.interior
         self.charas.scroll = True
 
@@ -276,7 +277,7 @@ class strategyPanel(object):
         # widgets
         Label(self.root, text="Wanted:").grid(row=0, column=0, rowspan=1, columnspan=1, padx=5, pady=5, sticky="nsew")
         Label(self.root, text="Unwanted:").grid(row=1, column=0, rowspan=1, columnspan=1, padx=5, pady=5, sticky="nsew")
-        self.strategy = Canvas(self.root, bg="white", highlightthickness=0)
+        self.strategy = Frame(self.root, bg="white", highlightthickness=0)
         self.strategy.grid(row=0, column=1, rowspan=2, columnspan=2, padx=5, pady=5, sticky="nsew")
 
         self.updateStrategy()
@@ -350,23 +351,6 @@ class strategyPanel(object):
         resStr = "".join([mapping[c].upper() for c in self.result["wanted"]]+[mapping[c].lower() for c in self.result["unwanted"]])
         self.resultVar.set(resStr)
 
-
-def getimage(holders, label, size=(60, 60)):
-    if label:
-        try:
-            imgpath = os.path.join(IMGPATH, label)
-            imgpath = addImgExt(imgpath)
-            img = Image.open(imgpath)
-            img = img.resize(size)
-        except:     # no image file
-            img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
-            draw = ImageDraw.Draw(img)
-            font = ImageFont.truetype("arial.ttf", 16)
-            draw.text((int(size[0]*0.3), int(size[1]*0.25)), label.split('/')[-1], (0,0,0), font=font)
-    else:
-        img = Image.fromarray(np.zeros((size[0],size[1],4),dtype=np.uint8))
-    holders.append(ImageTk.PhotoImage(img))
-
 def buttonArray(elements=None, textFunc=None, imageFunc=None, begin_index=0, buttonList=None, aligned=False, **kwargs):
     if not elements:
         return
@@ -411,13 +395,14 @@ class stopPanel(object):
         self.resultVar = resultVar
         self.parser = stopParser()
         self.up = up if up else []
+        self.charaNames = self.up+[h["name"] for h in data["heroes"]]
         self.debug_print = debug_print
 
     def initialization(self, setting=None):
         self.tree = self.parser.reform(self.parser.parse(self.resultVar.get()))
-        self.canvas = Canvas(self.root, highlightthickness=0)
+        self.canvas = Frame(self.root, highlightthickness=0)
         self.canvas.grid(row=0, column=0)
-        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[], cmpop_values=self.up+[h["name"] for h in data["heroes"]])
+        drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[], cmpop_values=self.charaNames)
         Button(self.root, text="Confirm", command=self.confirmStop).grid(row=1, column=0, sticky="nsew")
     
     def responseActionOnTree(self, event):
@@ -437,7 +422,7 @@ class stopPanel(object):
             if cnode["op"] in PRESETTINGOPS and len(cnode["obj"])!=2:
                 cnode["obj"] = ["red", 11]
             if cnode["op"] in CMPOPS and len(cnode["obj"])!=2:
-                cnode["obj"] = [[h["name"] for h in data["heroes"]][0], 11]
+                cnode["obj"] = [self.charaNames[0], 11]
         elif action == "select_obj1":
             cnode["obj"][0] = widget.get()
         elif action == "input_obj2":
@@ -446,7 +431,21 @@ class stopPanel(object):
             except:
                 cnode["obj"][1] = -1
         elif action == "add_child":
-            cnode["obj"].append({"op":"and","obj":[]})
+            if not pnode:
+                cnode["obj"].append({"op":"and","obj":[]})
+            else:
+                if not cnode["obj"]:
+                    cnode["obj"].append({"op":">=","obj":[self.charaNames[0], 11]})
+                else:
+                    lastop = cnode["obj"][-1]["op"]
+                    if lastop in LOGICOPS:
+                        cnode["obj"].append({"op":"and","obj":[]})
+                    elif lastop in PRESETTINGOPS:
+                        cnode["obj"].append({"op":"all","obj":["red", 11]})
+                    elif lastop in CMPOPS:
+                        cnode["obj"].append({"op":">=","obj":[self.charaNames[0], 11]})
+                    else:
+                        print("ERROR: UNSUPPORTED OP %s." % str(lastop))
         elif action == "remove_this":
             if pnode is None:
                 cnode["op"] = "and"
@@ -458,7 +457,7 @@ class stopPanel(object):
             self.canvas.grid_forget()
             self.canvas = Canvas(self.root, highlightthickness=0)
             self.canvas.grid(row=0, column=0)
-            drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[])
+            drawTree(self.canvas, self.tree, 0, 0, callback=self.responseActionOnTree, index=[], cmpop_values=self.charaNames)
     
     def confirmStop(self):
         try:

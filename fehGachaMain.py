@@ -6,6 +6,7 @@ import random, math, re, os, collections, copy, time
 import threading
 
 from fehGachaSub import *
+from widget import *
 import fehGacha as gacha
 try:
     from PIL import Image, ImageTk
@@ -144,21 +145,26 @@ class Application(Frame):
         self.charaBorderHolder = [None]*5
 
         self.is_simulating = False
+
+        # loading images
+        self.summonBgImg = getimage(label="util/Bg_Summon", size=(self.width+20, self.height))
+        self.mapBgImg = getimage(label="util/Bg_WorldMap", size=(self.width, self.height))
+        # self.buttonImg = getimage(label="util/charatemplate_bg_1star", size=(60, 30))
     
     def createWidget(self):
-        self.inputPanel = Canvas(self, highlightthickness=0)
+        self.inputPanel = Frame(self, highlightthickness=0)
         self.inputPanel.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.upInput = Canvas(self.inputPanel, highlightthickness=0)
+        self.upInput = Frame(self.inputPanel, highlightthickness=0)
         self.upInput.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        upInput = Canvas(self.upInput, highlightthickness=0)
+        upInput = Frame(self.upInput, highlightthickness=0)
         upInput.grid(row=0,column=0, padx=5, pady=5, sticky="w")
         Button(upInput, text="select 5 star up", command=lambda r='5u':self.selectChara_AllColors(r)).pack(side=LEFT)
         Button(upInput, text="select 4 star up", command=lambda r='4u':self.selectChara_AllColors(r)).pack(side=LEFT)
         rowId = 1
         for pup in ['5u', '4u']:
             for color in COLORS:
-                upInput = Canvas(self.upInput, highlightthickness=0)
+                upInput = Frame(self.upInput, highlightthickness=0)
                 upInput.grid(row=rowId,column=0, padx=5, pady=5, sticky="w")
                 label=Label(upInput, text="%s %s: " % ({'5u':"5* Up", '4u':"4* Up"}[pup], color))
                 label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
@@ -168,7 +174,7 @@ class Application(Frame):
                 button.grid(row=0, column=2, padx=5, pady=5, sticky="w")
                 rowId += 1
         
-        self.modeInput = Canvas(self.inputPanel, highlightthickness=0)
+        self.modeInput = Frame(self.inputPanel, highlightthickness=0)
         self.modeInput.grid(row=1, column=0, padx=5, pady=5, sticky="w")
         label=Label(self.modeInput, text="Gacha type:")
         label.grid(row=0, column=0)
@@ -185,7 +191,7 @@ class Application(Frame):
         
         
 
-        self.drawPanel = Canvas(self, highlightthickness=0)
+        self.drawPanel = Frame(self, highlightthickness=0)
         self.drawPanel.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
         self.canvas = Canvas(self.drawPanel, width=self.width, height=self.height, bg="white", highlightthickness=0)
@@ -199,7 +205,7 @@ class Application(Frame):
         self.infobox = Text(self.drawPanel,width=42,height=6,yscrollcommand=scrollbarInfo_v.set, xscrollcommand=scrollbarInfo_h.set, wrap=NONE)
         self.infobox.grid(row=4,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
 
-        self.list = Canvas(self.drawPanel, width=self.width, height=self.height, bg="white", highlightthickness=0)
+        self.list = Frame(self.drawPanel, width=self.width, height=self.height, bg="white", highlightthickness=0)
         self.list.grid(row=5,column=0,rowspan=3,columnspan=2)
 
         scrollbarList5_v = Scrollbar(self.list)
@@ -212,7 +218,7 @@ class Application(Frame):
         self.list34 = Listbox(self.list,width=21,height=10,yscrollcommand=scrollbarList34_v.set, xscrollcommand=scrollbarList34_h.set, highlightthickness=0)
         self.list34.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
-        self.simuPanel = Canvas(self, highlightthickness=0)
+        self.simuPanel = Frame(self, highlightthickness=0)
         self.simuPanel.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
         
         self.figure = Figure(figsize = (4,3), dpi = 100)
@@ -222,7 +228,7 @@ class Application(Frame):
         self.simu_plot_toolbar = NavigationToolbar2Tk(self.canvas_tk_agg, self.simuPanel, pack_toolbar=False)
         self.simu_plot_toolbar.grid(row=4,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
 
-        self.strategyInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
+        self.strategyInput = Frame(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
         self.strategyInput.grid(row=5,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.strategyInput, text="Drawing strategy: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
@@ -230,7 +236,7 @@ class Application(Frame):
         Button(self.strategyInput, text="...", 
                 command=lambda textVar=self.strategyStr:self.selectStrategy(textVar)).grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
-        self.stopInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
+        self.stopInput = Frame(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
         self.stopInput.grid(row=6,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.stopInput, text="Stop when: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
@@ -240,7 +246,7 @@ class Application(Frame):
         Checkbutton(self.stopInput, highlightthickness=0, text="full exp", variable=self.fullexpmode, onvalue=True, offvalue=False
             ).grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
-        self.simuNumInput = Canvas(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
+        self.simuNumInput = Frame(self.simuPanel, width=self.width, height=self.height, highlightthickness=0)
         self.simuNumInput.grid(row=7,column=0,rowspan=1,columnspan=2, padx=5, pady=5, sticky="nsew")
         label=Label(self.simuNumInput, text="Simulation number: ")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
@@ -248,12 +254,12 @@ class Application(Frame):
 
         self.simuButton = Button(self.simuPanel, text='simulate',width=20,command=self.simu)
         self.simuButton.grid(row=8,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
-        self.simuplotswitchbuttons = Canvas(self.simuPanel, highlightthickness=0)
+        self.simuplotswitchbuttons = Frame(self.simuPanel, highlightthickness=0)
         self.simuplotswitchbuttons.grid(row=9, column=0, rowspan=1,columnspan=4, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='histogram',width=12,command=self.draw_simu_hist).grid(row=0,column=0,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='density curve',width=12,command=self.draw_simu_density).grid(row=0,column=1,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         Button(self.simuplotswitchbuttons, text='cumulative distribution',width=20,command=self.draw_simu_distribution).grid(row=0,column=2,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
-        self.binsInput = Canvas(self.simuPanel, highlightthickness=0)
+        self.binsInput = Frame(self.simuPanel, highlightthickness=0)
         self.binsInput.grid(row=10, column=0, padx=5, pady=5, sticky="nsew")
         label=Label(self.binsInput, text="bins:")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
@@ -378,6 +384,8 @@ class Application(Frame):
 
     def updateCanvas(self):
         self.canvas.delete("all")
+        if self.summonBgImg is not None:
+            self.canvas.create_image(self.width//2, self.height//2, image=self.summonBgImg, tags=("background"))
         for i in range(len(self.balls)):
             imgpath = os.path.join(IMGPATH, "util", "%s"%self.colorList[i])
             imgpath = addImgExt(imgpath)
@@ -633,8 +641,14 @@ class Application(Frame):
 
 if __name__ == "__main__":
     root = Tk()
-    root.geometry('1200x800+1300+900')
+    root.geometry('1200x800+300+200')
+    # bgimage = getimage(label="util/Bg_MarginLong", size=(1200, 800))
+    # root.bgimage = bgimage
+    # bigbg = Label(root, image=bgimage)
+    # bigbg.place(x=0, y=0)
     root.title('')
+    root.wm_attributes('-transparentcolor', TRANSPARENTCOLOR)
+    # root.config(bg=TRANSPARENTCOLOR)
     app = Application(master=root)
     app.update()
     
