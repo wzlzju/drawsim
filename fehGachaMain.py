@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-import random, math, re, os, collections, copy, time
+import random, math, re, os, collections, copy, time, bisect, io
 import threading
 
 from fehGachaSub import *
@@ -70,6 +70,9 @@ class Application(Frame):
         # self.stopStr = StringVar(self, "[all gray 11] or (Corrin(F) (Brave) >= 10 and Corrin(F) (Brave) >= 11 or Corrin(F) (Brave) >= 9)")
         self.simu_num = StringVar(self, "10000")
         self.hist_bins = StringVar(self, "20")
+        self.testcosts = StringVar(self, "")
+
+        self.debug_output = io.StringIO()
 
         if NODATA:
             self.data = {"heroes":[]}
@@ -261,9 +264,13 @@ class Application(Frame):
         Button(self.simuplotswitchbuttons, text='cumulative distribution',width=20,command=self.draw_simu_distribution).grid(row=0,column=2,rowspan=1,columnspan=1, padx=5, pady=5, sticky="nsew")
         self.binsInput = Frame(self.simuPanel, highlightthickness=0)
         self.binsInput.grid(row=10, column=0, padx=5, pady=5, sticky="nsew")
-        label=Label(self.binsInput, text="bins:")
+        label = Label(self.binsInput, text="bins:")
         label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         Entry(self.binsInput, textvariable=self.hist_bins, width=6).grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        Label(self.binsInput, text="costs:").grid(row=0, column=2, padx=5, pady=5, sticky="w")
+        Entry(self.binsInput, width=6, validate="key", validatecommand=(self.register(self.testingCosts), '%P')).grid(row=0, column=3, padx=5, pady=5, sticky="w")
+        self.testres = Label(self.binsInput)
+        self.testres.grid(row=0, column=4, padx=5, pady=5, sticky="w")
 
         scrollbardebug_v = Scrollbar(self.simuPanel)
         scrollbardebug_h = Scrollbar(self.simuPanel, orient=HORIZONTAL)
@@ -291,8 +298,14 @@ class Application(Frame):
         self.infobox.insert('1.0', ts)
     
     def debug_print(self, *args, **kwargs):
-        ts = ' '.join([str(_) for _ in args]) + '\n'
-        self.debugbox.insert(END, ts)
+        # flush StringIO or flush Text box
+        self.debug_output.seek(0)
+        self.debug_output.truncate()
+        # self.debugbox.delete('1.0', END)
+        print(*args, file=self.debug_output, **kwargs)
+        contents = self.debug_output.getvalue()
+        self.debugbox.insert(END, contents)
+        self.debugbox.see(END)
     
     def updateList(self):
         self.list5.delete(0, END)
@@ -623,6 +636,36 @@ class Application(Frame):
         self.canvas_tk_agg.draw()
         self.simu_plot_toolbar.update()
     
+    def testingCosts(self, costs):
+        # costs = self.testcosts.get()
+        # textvariable=self.testcosts, 
+        if costs and self.simu_orbres:
+            try:
+                costs = int(costs)
+                samples = sorted(self.simu_orbres)
+                N = len(samples)
+                pos1 = bisect.bisect_left(samples, costs)
+                pos2 = bisect.bisect_right(samples, costs)
+                pos = (pos1+pos2)/2
+                propotion = pos/N * 100
+                color = "red" if propotion>=50 else "green"
+                self.testres.config(text="%.2f%%"%propotion, fg=color)
+                try:
+                    self.testcostsline.remove()
+                except:
+                    pass
+                self.testcostsline = self.plot.axvline(x=costs, color=color, label="test costs")
+                self.plot.relim()
+                self.plot.autoscale_view()
+                self.canvas_tk_agg.draw()
+                self.simu_plot_toolbar.update()
+                return True
+            except Exception as e:
+                self.debug_print(e)
+                return False
+        return False
+
+    
     def print_statistics(self):
         if not self.simu_orbres:
             return
@@ -630,9 +673,9 @@ class Application(Frame):
         miu = mean(self.simu_orbres)
         sigma = (mean([(i-miu)**2 for i in self.simu_orbres]))**0.5
         self.debug_print(miu)
-        self.debug_print(miu-sigma, miu+sigma)
-        self.debug_print(miu-sigma*2, miu+sigma*2)
-        self.debug_print(miu-sigma*3, miu+sigma*3)
+        # self.debug_print(miu-sigma, miu+sigma)
+        # self.debug_print(miu-sigma*2, miu+sigma*2)
+        # self.debug_print(miu-sigma*3, miu+sigma*3)
 
 
 
