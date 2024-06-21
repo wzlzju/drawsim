@@ -2,12 +2,13 @@ import random, math, copy
 
 # from fehdata import data
 from tmpdata import data
+from util import *
 
 class gacha(object):
     def __init__(self, 
                 probs={"5u": 0.03, "5": 0.03, "4to5": 0.03, "34": 0.91}, # 5u, 5, 4u, 4to5, s4to5, 34
                 charas={"5u": [{'name':'po', 'color': 'gray'}], "5": None, "4to5": None, "34": None},
-                mode="normal"):
+                mode="normal", until_version=1e6):
         self.probs = probs
         for prank in ['5u', '5', '4u', '4to5', 's4to5', '34']:
             if prank not in list(self.probs.keys()):
@@ -16,7 +17,7 @@ class gacha(object):
         self.charas['5'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] in [6, 16]]
+        } for c in data['heroes'] if c['rating'] in [6, 16] and versiontuple(c['version'])<=versiontuple(until_version)]
         self.charas['4to5'] = [{
             'name': c['name'],
             'color': c['color']
@@ -24,11 +25,11 @@ class gacha(object):
         self.charas['s4to5'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] in [7] and float(c['version'].replace(',','.'))<=data['special_4to5_version']]
+        } for c in data['heroes'] if c['rating'] in [7] and versiontuple(c['version'])<=versiontuple(data['special_4to5_version'])]
         self.charas['34'] = [{
             'name': c['name'],
             'color': c['color']
-        } for c in data['heroes'] if c['rating'] in [2, 20]]
+        } for c in data['heroes'] if c['rating'] in [2, 20] and versiontuple(c['version'])<=versiontuple(until_version)]
         self.mode = mode
 
         self.cprobs = copy.deepcopy(self.probs)

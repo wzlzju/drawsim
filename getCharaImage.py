@@ -39,7 +39,7 @@ def update():
     for _ in range(5):
         data = data.replace("\t\t", '\n')
         data = data.replace("}];\n", '}]\n\n')
-    data = 'null = None\nSPECIAL_4TO5_VER = 4.11\n\ndata = {}\ndata["special_4to5_version"] = SPECIAL_4TO5_VER\n\n'+data
+    data = 'null = None\nSPECIAL_4TO5_VER = "4.11"\n\ndata = {}\ndata["special_4to5_version"] = SPECIAL_4TO5_VER\n\n'+data
     with open("tmpdata.py", "w") as f:
         f.write(data)
 

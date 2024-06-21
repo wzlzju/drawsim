@@ -33,7 +33,7 @@ class Application(Frame):
         self.width = 300
         self.height = 370
 
-        self.mode = IntVar(self, 0)
+        self.mode = 0 # IntVar(self, 0)
         self.up = {
             '5u':{
                 'red': StringVar(self, "Robin(M) (Brave)"),
@@ -70,7 +70,9 @@ class Application(Frame):
         # self.stopStr = StringVar(self, "[all gray 11] or (Corrin(F) (Brave) >= 10 and Corrin(F) (Brave) >= 11 or Corrin(F) (Brave) >= 9)")
         self.simu_num = StringVar(self, "10000")
         self.hist_bins = StringVar(self, "20")
-        self.testcosts = StringVar(self, "")
+        # self.testcosts = StringVar(self, "")
+        # self.until_version = StringVar(self, "")
+        self.versionselectbox = None
 
         self.debug_output = io.StringIO()
 
@@ -89,6 +91,7 @@ class Application(Frame):
         data['name2hero'] = {hero['name']:hero for hero in data["heroes"]}
         data['hero_ids'] = set([hero['hero_id'] for hero in data["heroes"]])
         data['names'] = set([hero['name'] for hero in data["heroes"]])
+        data["versions"] = sorted(list(set(versiontuple(hero["version"]) for hero in data["heroes"])), reverse=True)[:40]
 
     def initialize(self):
         probs, charas = self.parseUserInput(self.up, self.mode)
@@ -115,7 +118,8 @@ class Application(Frame):
 
         self.gacha = gacha.gacha(probs=probs,
                             charas=charas,
-                            mode=self.mode)
+                            mode=self.mode,
+                            until_version=self.versionselectbox.get() if self.versionselectbox else 1e6)
         self.statistics = {
             '5u': [],
             '5': [],
@@ -134,7 +138,8 @@ class Application(Frame):
                                 gacha=gacha.gacha(
                                     probs=probs,
                                     charas=charas,
-                                    mode=self.mode
+                                    mode=self.mode,
+                                    until_version=self.versionselectbox.get() if self.versionselectbox else 1e6
                                 ),
                                 strategy=self.simu_parseStrategy if not self.cheatmode.get() else self.simu_parseStrategyCheat,
                                 terminate=self.simu_parseStop,
@@ -179,10 +184,15 @@ class Application(Frame):
         
         self.modeInput = Frame(self.inputPanel, highlightthickness=0)
         self.modeInput.grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        label=Label(self.modeInput, text="Gacha type:")
+        label=Label(self.modeInput, text="Version:")
         label.grid(row=0, column=0)
+        self.versionselectbox = ttk.Combobox(self.modeInput, values=["%d.%d"%v for v in self.data["versions"]])
+        self.versionselectbox.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        self.versionselectbox.set("%d.%d"%self.data["versions"][0])
+        label=Label(self.modeInput, text="Gacha type:")
+        label.grid(row=1, column=0)
         self.modeselectbox = ttk.Combobox(self.modeInput, values=MODES)
-        self.modeselectbox.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        self.modeselectbox.grid(row=1, column=1, padx=5, pady=5, sticky="w")
         self.modeselectbox.set(MODES[0])
         self.modeselectbox.bind("<<ComboboxSelected>>", self.selectMode)
         # for i, mode in enumerate(MODES):

@@ -100,6 +100,26 @@ def is_iterable(obj):
     except TypeError:  
         return False  
 
+def versiontuple(v):
+    if not v:
+        return (0,0)
+    if type(v) is tuple:
+        return v
+    if type(v) is int:
+        return (v, 0)
+    if type(v) is float:
+        v1 = int(v)
+        v2 = int((v-v1)*1e8)
+        while True:
+            d = v2-10*int(v2/10)
+            if d > 0:
+                break
+            v2 = int(v2/10)
+            if v2 == 0:
+                break
+        return (v1, v2)
+    return tuple(int(i) for i in re.split('[.,]', v))
+
 class stopParser(object):
     def __init__(self):
         and_ = pyparsing.Keyword('and')

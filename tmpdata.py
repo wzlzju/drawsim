@@ -1,5 +1,5 @@
 null = None
-SPECIAL_4TO5_VER = 4.11
+SPECIAL_4TO5_VER = "4.11"
 
 data = {}
 data["special_4to5_version"] = SPECIAL_4TO5_VER
