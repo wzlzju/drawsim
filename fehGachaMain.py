@@ -73,6 +73,8 @@ class Application(Frame):
         # self.testcosts = StringVar(self, "")
         # self.until_version = StringVar(self, "")
         self.versionselectbox = None
+        self.simu_curve = None
+        self.testcostsline = None
 
         self.debug_output = io.StringIO()
 
@@ -613,6 +615,36 @@ class Application(Frame):
             # self.simuButton.config(text="simulate")
             # self.is_simulating = False
     
+    def _clear_testcostsline(f):
+        def do(self, *args, **kwargs):
+            if self.testcostsline:
+                self.testcostsline.remove()
+            f(self, *args, **kwargs)
+        return do
+    
+    def _clear_simu_curve(f):
+        def do(self, *args, **kwargs):
+            if self.simu_curve is not None:
+                if is_iterable(self.simu_curve):
+                    _ = [c.remove() for c in self.simu_curve]
+                else:
+                    self.simu_curve.remove()
+            f(self, *args, **kwargs)
+        return do
+    
+    def _flush_simu_figure(f):
+        def do(self, *args, **kwargs):
+            f(self, *args, **kwargs)
+            self.plot.relim()
+            self.plot.autoscale_view()
+            self.canvas_tk_agg.draw()
+            self.simu_plot_toolbar.update()
+            if self.testcostsline:
+                self.testcostsline.set_zorder(2.5)
+        return do
+
+    @_clear_simu_curve
+    @_flush_simu_figure
     def draw_simu_hist(self, bins=20):
         if not self.simu_orbres:
             return
@@ -621,60 +653,49 @@ class Application(Frame):
         except Exception as e:
             self.debug_print("Invalid bins:", bins)
             self.debug_print(type(e), e)
-        self.plot.clear()
-        self.plot.hist(self.simu_orbres, bins=bins)
-        self.canvas_tk_agg.draw()
-        self.simu_plot_toolbar.update()
+        count, bins, self.simu_curve = self.plot.hist(self.simu_orbres, bins=bins, color="tab:blue")
     
+    @_clear_simu_curve
+    @_flush_simu_figure
     def draw_simu_density(self):
         if not self.simu_orbres:
             return
         x = list(range(0, max(self.simu_orbres)+1))
         y = densitycurve(x, self.simu_orbres)
-        self.plot.clear()
-        self.plot.plot(x, y)
-        self.canvas_tk_agg.draw()
-        self.simu_plot_toolbar.update()
+        self.simu_curve = self.plot.plot(x, y, color="tab:blue")
     
+    @_clear_simu_curve
+    @_flush_simu_figure
     def draw_simu_distribution(self):
         if not self.simu_orbres:
             return
         x = list(range(0, max(self.simu_orbres)+1))
         y = distributioncurve(x, self.simu_orbres)
-        self.plot.clear()
-        self.plot.plot(x, y)
-        self.canvas_tk_agg.draw()
-        self.simu_plot_toolbar.update()
-    
+        self.simu_curve = self.plot.plot(x, y, color="tab:blue")
+
     def testingCosts(self, costs):
-        # costs = self.testcosts.get()
-        # textvariable=self.testcosts, 
         if costs and self.simu_orbres:
             try:
                 costs = int(costs)
-                samples = sorted(self.simu_orbres)
-                N = len(samples)
-                pos1 = bisect.bisect_left(samples, costs)
-                pos2 = bisect.bisect_right(samples, costs)
-                pos = (pos1+pos2)/2
-                propotion = pos/N * 100
-                color = "red" if propotion>=50 else "green"
-                self.testres.config(text="%.2f%%"%propotion, fg=color)
-                try:
-                    self.testcostsline.remove()
-                except:
-                    pass
-                self.testcostsline = self.plot.axvline(x=costs, color=color, label="test costs")
-                self.plot.relim()
-                self.plot.autoscale_view()
-                self.canvas_tk_agg.draw()
-                self.simu_plot_toolbar.update()
+                self.generate_costsline(costs)
                 return True
             except Exception as e:
                 self.debug_print(e)
                 return False
         return False
-
+    
+    @_clear_testcostsline
+    @_flush_simu_figure
+    def generate_costsline(self, costs):
+        samples = sorted(self.simu_orbres)
+        N = len(samples)
+        pos1 = bisect.bisect_left(samples, costs)
+        pos2 = bisect.bisect_right(samples, costs)
+        pos = (pos1+pos2)/2
+        propotion = pos/N * 100
+        color = "red" if propotion>=50 else "green"
+        self.testres.config(text="%.2f%%"%propotion, fg=color)
+        self.testcostsline = self.plot.axvline(x=costs, color=color, label="test costs")
     
     def print_statistics(self):
         if not self.simu_orbres:
