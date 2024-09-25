@@ -41,6 +41,12 @@ def getimage(holders=None, label=None, size=(60, 60)):
     else:
         return img
 
+def rgb2hex(r,g,b):
+    return "#%02x%02x%02x" % (r,g,b)
+
+def hex2rgb(h):
+    return int(h[1:3],16), int(h[3:5],16), int(h[5:7],16)
+
 def densitycurve(x=None, samples=None):
     if not samples:
         return
@@ -139,11 +145,6 @@ class stopParser(object):
         self.word = ~(and_ | or_ | not_ | true_ | false_) + \
                 pyparsing.Word(pyparsing.alphas) + \
                 pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.OneOrMore(pyparsing.Word(pyparsing.alphas))+')'))
-                # pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.Word(pyparsing.alphas)+')')) + \
-                # pyparsing.ZeroOrMore(pyparsing.Group('('+pyparsing.Word(pyparsing.alphas)+pyparsing.Word(pyparsing.alphas)+')'))
-                # pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+pyparsing.ZeroOrMore(pyparsing.Group(' '+pyparsing.Word(pyparsing.alphas)))+')'))
-                # pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+')')) + \
-                # pyparsing.ZeroOrMore(pyparsing.Group(' '+'('+pyparsing.Word(pyparsing.alphas)+' '+pyparsing.Word(pyparsing.alphas)+')'))
         name = pyparsing.originalTextFor(self.word[1, ...]).setName("name")
         operator = pyparsing.oneOf("== != < > >= <= eq ne lt le gt ge", caseless=True) | pyparsing.Empty().addParseAction(lambda: ">=")
         condition = pyparsing.Group(name + operator + intNum).setName("condition")
@@ -283,7 +284,7 @@ class stopParser(object):
         return type(obj) is pyparsing.results.ParseResults or type(obj) is list
 
     def operator_convert(self, op):
-        if op in "== != < > <= >=":
+        if op in "== != < > <= >=".split():
             return op
         return {
             "eq": "==",
