@@ -102,7 +102,8 @@ class Application(Frame):
                                     'hero_id':-(idx+1), 
                                     'name':chara['name'], 
                                     'color':chara['color'], 
-                                    'minrarity':5
+                                    'minrarity':5,
+                                    'version': (0,0)
                                 } for idx, chara in enumerate(charas['5u']) if chara['name'] not in self.data['names']]
         for idx, chara in enumerate(charas['4u']):
             if chara['name'] in self.data['names']:
