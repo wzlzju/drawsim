@@ -4,6 +4,7 @@ from fake_useragent import UserAgent
 
 from PIL import Image
 import io
+from util import *
 
 headers = {"User-Agent": UserAgent().random}
 def url(name):
@@ -13,10 +14,13 @@ def crawl():
     # from fehdata import data
     from tmpdata import data
 
+    imgpath = "./img/chara/"
+    if not os.path.exists(imgpath):
+        os.makedirs(imgpath)
     for i, hero in enumerate(data["heroes"]):
         name = hero["name"]
         try:
-            chpath = "./img/chara/%s.png" % name
+            chpath = imgpath + "%s.png" % name
             if not os.path.exists(chpath):
                 img_bin = requests.get(url=url(name),headers=headers).content
                 img=Image.open(io.BytesIO(img_bin))
@@ -25,7 +29,7 @@ def crawl():
                 print(i, name)
                 time.sleep(0.1)
         except:
-            print("ERROR", name)
+            print("ERROR", name, link_to)
 
 def update():
     url = "http://www.arcticsilverfox.com/score_calc/"

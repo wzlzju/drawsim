@@ -356,6 +356,7 @@ def buttonArray(elements=None, textFunc=None, imageFunc=None, begin_index=0, but
         return
     if textFunc is None and imageFunc is None:
         print("Error: No text and no image Func given in buttonArray of", elements)
+        print_link()
     if NOPIL and textFunc is None:
         textFunc = lambda i,e: str(e)
     for ii, e in enumerate(elements):
@@ -375,8 +376,10 @@ def buttonArray(elements=None, textFunc=None, imageFunc=None, begin_index=0, but
 def buttonEntry(root=None, tag="", index=0, element=None, callbackFunc=None, text=None, image=None, imgholder=None, size=(60,60), rownum=8, **kwargs):
     if root is None or element is None or callbackFunc is None:
         print("Error: No text and no image given in buttonEntry of", root, element, "False calling.")
+        print_link()
     if text is None and image is None:
         print("Error: No text and no image given in buttonEntry of", root, element)
+        print_link()
     if NOPIL and text is None:
         text = str(image)
     if text is not None:
@@ -446,6 +449,7 @@ class stopPanel(object):
                         cnode["obj"].append({"op":">=","obj":[self.charaNames[0], 11]})
                     else:
                         print("ERROR: UNSUPPORTED OP %s." % str(lastop))
+                        print_link()
         elif action == "remove_this":
             if pnode is None:
                 cnode["op"] = "and"

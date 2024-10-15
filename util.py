@@ -2,6 +2,7 @@ import os
 import collections, copy, functools
 import re
 import pyparsing
+import inspect
 from const import *
 from util import *
 try:
@@ -340,6 +341,50 @@ class stopParser(object):
                 pexp = pexp[j:]
         return exp
 
+
+def link_to(file=None, line=None, char=None, abbr=False):
+    if file is None:
+        file = inspect.stack()[1].filename
+    if line is None:
+        line = inspect.stack()[1].lineno
+    if char is None:
+        char = 0
+    if not abbr:
+        s = f'File "{file}", line {max(line, 1)}'.replace("\\", "/")
+    else:
+        s = "%s:%d:%d" % (file, line, char)
+    return s
+
+def print_link(file=None, line=None):
+    """ Print a link in PyCharm to a line in file.
+        Defaults to line where this function was called. """
+    s = link_to(file, line)
+    print(s)
+    return s
+
+def link_to_obj(obj):
+    if isinstance(obj, property):
+        obj = obj.fget
+    file = inspect.getfile(obj)
+    line = inspect.getsourcelines(obj)[1]
+    return link_to(file=file, line=line)
+
+def print_link_to_obj(obj):
+    """ Print a link in PyCharm to a module, function, class, method or property. """
+    s = link_to_obj(obj)
+    print(s)
+    return s
+
+def hyper_link_to(url, label=None):
+    "Only in win console. url='https://example.com' or url='files://D:/example/example.txt'"
+    if label is None: 
+        label = url
+    parameters = ''
+
+    # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST 
+    escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
+
+    return escape_mask.format(parameters, url, label)
 
 if __name__ == "__main__":
     p = stopParser()
