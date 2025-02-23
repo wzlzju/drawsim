@@ -175,14 +175,11 @@ class Application(Frame):
         rowId = 1
         for pup in ['5u', '4u']:
             for color in COLORS:
-                upInput = Frame(self.upInput, highlightthickness=0)
-                upInput.grid(row=rowId,column=0, padx=5, pady=5, sticky="w")
-                label=Label(upInput, text="%s %s: " % ({'5u':"5* Up", '4u':"4* Up"}[pup], color))
-                label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-                entry=Entry(upInput, textvariable=self.up[pup][color])
-                entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
-                button=Button(upInput, text="...", command=lambda c=color,textVar=self.up[pup][color]:self.selectChara(c,textVar))
-                button.grid(row=0, column=2, padx=5, pady=5, sticky="w")
+                upInput = Canvas(self.upInput, highlightthickness=0)
+                upInput.grid(row=rowId,column=0, padx=5, pady=5, sticky="nswe")
+                Label(upInput, text="%s %s: " % ({'5u':"5* Up", '4u':"4* Up"}[pup], color)).pack(side=LEFT)
+                Button(upInput, text="...", command=lambda c=color,textVar=self.up[pup][color]:self.selectChara(c,textVar)).pack(side=RIGHT)
+                Entry(upInput, textvariable=self.up[pup][color]).pack(side=RIGHT)
                 rowId += 1
         
         self.modeInput = Frame(self.inputPanel, highlightthickness=0)
